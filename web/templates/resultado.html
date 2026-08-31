@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block conteudo %}
+<div class="page-head">
+  <h1>Resultado &mdash; <span class="badge badge-accent">{{ res.tabela }}</span></h1>
+  <p>Confira as ocorrências antes de carregar os arquivos no banco.</p>
+</div>
+
+<div class="stat-grid">
+  <div class="stat-card">
+    <span class="num" data-count="{{ res.linhas|length }}">{{ res.linhas|length }}</span>
+    <span class="label">Linhas geradas</span>
+  </div>
+  <div class="stat-card {{ 'danger' if res.erros else '' }}">
+    <span class="num" data-count="{{ res.erros|length }}">{{ res.erros|length }}</span>
+    <span class="label">Erros</span>
+  </div>
+  <div class="stat-card {{ 'warning' if res.avisos else '' }}">
+    <span class="num" data-count="{{ res.avisos|length }}">{{ res.avisos|length }}</span>
+    <span class="label">Avisos</span>
+  </div>
+</div>
+
+{% if res.ok %}
+  <div class="status-banner ok">{{ icon("check-circle") }} Tudo certo &mdash; arquivos prontos para carregar no banco.</div>
+{% else %}
+  <div class="status-banner fail">{{ icon("alert-circle") }} Há erros pendentes. Corrija a planilha ou o mapeamento antes de carregar no banco.</div>
+{% endif %}
+
+<div class="download-grid">
+  {% for arq in arquivos %}
+  <a class="download-card" href="{{ url_for('download', nome_arquivo=arq.nome) }}">
+    <span class="download-card-icon {{ arq.tipo }}">{{ icon("file-excel") if arq.tipo == "xlsx" else icon("database") }}</span>
+    <span>
+      <span class="download-card-name">{{ arq.nome }}</span><br>
+      <span class="download-card-size">{{ arq.tamanho }}</span>
+    </span>
+    <span class="download-card-go">{{ icon("download") }}</span>
+  </a>
+  {% endfor %}
+</div>
+
+{% if res.ocorrencias %}
+<div class="card">
+  <h2 style="font-size:1.05rem; margin-bottom:1rem;">Ocorrências</h2>
+  <div class="filter-pills">
+    <button type="button" class="filter-pill active" data-filtro-severidade="todas">Todas ({{ res.ocorrencias|length }})</button>
+    <button type="button" class="filter-pill" data-filtro-severidade="erro">Erros ({{ res.erros|length }})</button>
+    <button type="button" class="filter-pill" data-filtro-severidade="aviso">Avisos ({{ res.avisos|length }})</button>
+  </div>
+  <div class="table-scroll">
+    <table class="ocorrencias">
+      <thead>
+        <tr><th>Severidade</th><th>Linha</th><th>Coluna</th><th>Mensagem</th></tr>
+      </thead>
+      <tbody>
+        {% for o in res.ocorrencias %}
+        <tr class="{{ o.severidade }}">
+          <td>
+            {% if o.severidade == "erro" %}
+              <span class="badge badge-danger">Erro</span>
+            {% else %}
+              <span class="badge badge-warning">Aviso</span>
+            {% endif %}
+          </td>
+          <td>{{ o.linha or "-" }}</td>
+          <td>{{ o.coluna }}</td>
+          <td>{{ o.mensagem }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<div class="actions-row">
+  <a class="btn btn-ghost" href="{{ url_for('index') }}">{{ icon("refresh") }} Nova conversão</a>
+</div>
+{% endblock %}

@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block conteudo %}
+<div class="page-head">
+  <h1>Limpeza de base</h1>
+  <p>Como o conversor valida os dados, uma ferramenta para pré-limpar a planilha do cliente e um checklist para preparar a base CIGAM antes da carga.</p>
+</div>
+
+<div class="section-head">
+  <h2>Validações que o conversor já faz</h2>
+  <p>Acontecem automaticamente na etapa de conversão — isso aqui é só para explicar o que cada aviso/erro significa.</p>
+</div>
+<div class="info-grid">
+  <div class="info-card">
+    <span class="info-card-icon">{{ icon("alert-triangle") }}</span>
+    <h3>Tamanho de campo</h3>
+    <p>Cada coluna do gabarito CIGAM tem um limite (ex.: "20 caracteres" na linha R2). Se o valor do cliente ultrapassa esse limite, gera um aviso — ou é truncado automaticamente se a opção "Truncar" estiver marcada na tela de mapeamento.</p>
+  </div>
+  <div class="info-card">
+    <span class="info-card-icon">{{ icon("alert-circle") }}</span>
+    <h3>PK duplicada</h3>
+    <p>As colunas escolhidas como chave (ex.: grupo + subgrupo + material) não podem se repetir entre as linhas enviadas. Se duas linhas tiverem a mesma combinação, a segunda é marcada como erro.</p>
+  </div>
+  <div class="info-card">
+    <span class="info-card-icon">{{ icon("alert-circle") }}</span>
+    <h3>Campo obrigatório vazio</h3>
+    <p>Colunas marcadas como obrigatórias precisam vir preenchidas pelo cliente ou ter um default no gabarito. Sem os dois, a linha é marcada como erro e não deve ser carregada no banco.</p>
+  </div>
+</div>
+
+<div class="section-head">
+  <h2>Pré-limpeza da planilha do cliente</h2>
+  <p>Rode antes do mapeamento para tirar o "lixo" mais comum: espaços extras, linhas repetidas e colunas totalmente vazias.</p>
+</div>
+<div class="card">
+  <form method="post" action="{{ url_for('limpeza_processar') }}" enctype="multipart/form-data">
+    <div class="field">
+      <label for="arquivo">Planilha a limpar</label>
+      <div class="dropzone" data-dropzone>
+        <input type="file" id="arquivo" name="arquivo" accept=".xlsx,.xls,.csv,.tsv" required>
+        <label for="arquivo" class="dropzone-inner">
+          {{ icon("upload-cloud") }}
+          <span class="dropzone-title">Arraste o arquivo aqui</span>
+          <span class="dropzone-sub">ou clique para selecionar</span>
+          <span class="dropzone-file" data-filename hidden>{{ icon("check-circle") }}<span data-filename-text></span></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="option-list">
+      <label class="switch">
+        <input type="checkbox" name="normalizar_espacos" value="1" checked>
+        <span class="switch-track"><span class="switch-thumb"></span></span>
+        Normalizar espaços (remove espaços duplicados e nas pontas)
+      </label>
+      <label class="switch">
+        <input type="checkbox" name="remover_duplicados" value="1" checked>
+        <span class="switch-track"><span class="switch-thumb"></span></span>
+        Remover linhas 100% duplicadas
+      </label>
+      <label class="switch">
+        <input type="checkbox" name="remover_colunas_vazias" value="1" checked>
+        <span class="switch-track"><span class="switch-thumb"></span></span>
+        Remover colunas totalmente vazias
+      </label>
+    </div>
+
+    <div class="actions-row">
+      <button type="submit" class="btn btn-primary" data-loading-text="Limpando...">
+        Limpar planilha {{ icon("wand") }}
+      </button>
+    </div>
+  </form>
+
+  {% if resultado %}
+  <div class="section-head">
+    <h2>Resultado da limpeza</h2>
+  </div>
+  <div class="stat-grid">
+    <div class="stat-card">
+      <span class="num" data-count="{{ linhas_originais }}">{{ linhas_originais }}</span>
+      <span class="label">Linhas originais</span>
+    </div>
+    <div class="stat-card success">
+      <span class="num" data-count="{{ resultado.linhas_removidas }}">{{ resultado.linhas_removidas }}</span>
+      <span class="label">Linhas duplicadas removidas</span>
+    </div>
+    <div class="stat-card success">
+      <span class="num" data-count="{{ resultado.celulas_normalizadas }}">{{ resultado.celulas_normalizadas }}</span>
+      <span class="label">Células com espaços corrigidos</span>
+    </div>
+    <div class="stat-card {{ 'warning' if resultado.colunas_vazias_removidas else '' }}">
+      <span class="num" data-count="{{ resultado.colunas_vazias_removidas|length }}">{{ resultado.colunas_vazias_removidas|length }}</span>
+      <span class="label">Colunas vazias removidas</span>
+    </div>
+  </div>
+
+  {% if resultado.colunas_vazias_removidas %}
+  <p style="color:var(--text-muted); font-size:0.85rem; margin-top:-0.5rem;">
+    Colunas removidas: {{ resultado.colunas_vazias_removidas|join(", ") }}
+  </p>
+  {% endif %}
+
+  <div class="download-grid">
+    <a class="download-card" href="{{ url_for('limpeza_download', nome_arquivo=arquivo_saida) }}">
+      <span class="download-card-icon xlsx">{{ icon("file-excel") }}</span>
+      <span>
+        <span class="download-card-name">{{ arquivo_saida }}</span><br>
+        <span class="download-card-size">{{ resultado.registros|length }} linhas &middot; {{ resultado.colunas|length }} colunas</span>
+      </span>
+      <span class="download-card-go">{{ icon("download") }}</span>
+    </a>
+  </div>
+  {% endif %}
+</div>
+
+<div class="section-head">
+  <h2>Checklist: preparar a base CIGAM antes da carga</h2>
+  <p>Fica salvo neste navegador — marque conforme for concluindo antes de rodar a promoção.</p>
+</div>
+<div class="card">
+  <div class="checklist-progress">
+    <div class="checklist-progress-bar"><div class="checklist-progress-fill" id="checklist-progress-fill"></div></div>
+    <span class="checklist-progress-label" id="checklist-progress-label"></span>
+  </div>
+  <ul class="checklist" id="checklist-cigam">
+    {% set itens = [
+      ("backup", "Fazer backup do banco (ou snapshot da base de homologação) antes de qualquer carga."),
+      ("staging", "Rodar o *_staging.sql primeiro e conferir a contagem de linhas antes de promover."),
+      ("registros-teste", "Verificar se já existem registros de teste/homologação com os mesmos códigos que serão importados."),
+      ("ordem-carga", "Respeitar a ordem de carga: cadastros-base (ESGRUPO, ESSUBGRU, ESCLASFI, GEEMPRES) antes das tabelas que dependem deles (ESMATERI, GFLANCAM)."),
+      ("conferir-total", "Depois da promoção, comparar o total de linhas na tabela CIGAM com o total esperado da planilha."),
+      ("arquivar-scripts", "Arquivar ou remover os scripts de staging já promovidos, para não rodar duas vezes por engano."),
+    ] %}
+    {% for id, texto in itens %}
+    <li>
+      <label class="checklist-item" data-item-id="{{ id }}">
+        <input type="checkbox">
+        <span>{{ texto }}</span>
+      </label>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

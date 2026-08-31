@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block conteudo %}
+<div class="page-head">
+  <h1>Escolha a tabela de destino</h1>
+  <p>{{ abas|length }} tabelas disponíveis no modelo. Selecione a que corresponde aos dados enviados.</p>
+</div>
+
+<div class="card">
+  <div class="search-box">
+    {{ icon("search") }}
+    <input type="text" id="filtro-abas" placeholder="Filtrar por tabela ou nome da aba...">
+  </div>
+
+  <form method="post" action="{{ url_for('definir_aba') }}">
+    <ul class="table-grid" id="lista-abas">
+      {% for item in abas %}
+      <li>
+        <label class="table-card">
+          <input type="radio" name="aba" value="{{ item.aba }}" required>
+          <span class="table-card-inner">
+            <span class="table-card-icon">{{ icon("table") }}</span>
+            <span>
+              <span class="table-card-name">{{ item.tabela }}</span><br>
+              <span class="table-card-aba">{{ item.aba }}</span>
+            </span>
+          </span>
+        </label>
+      </li>
+      {% endfor %}
+    </ul>
+    <p class="empty-msg" id="abas-vazio" hidden>Nenhuma tabela encontrada para esse filtro.</p>
+
+    <div class="actions-row">
+      <button type="submit" class="btn btn-primary" data-loading-text="Abrindo...">
+        Continuar {{ icon("arrow-right") }}
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}

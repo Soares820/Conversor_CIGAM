@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Conversor CIGAM</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%AE%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("cigam-theme");
+        if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body>
+  {% from "_icons.html" import icon %}
+
+  <div class="toast-stack" id="toast-stack" aria-live="polite">
+    {% with mensagens = get_flashed_messages(with_categories=true) %}
+      {% for categoria, msg in mensagens %}
+      <div class="toast toast-{{ categoria }}" data-toast>
+        {{ icon("alert-circle") }}
+        <span>{{ msg }}</span>
+        <button type="button" class="toast-close" data-toast-close aria-label="Fechar aviso">{{ icon("x") }}</button>
+      </div>
+      {% endfor %}
+    {% endwith %}
+  </div>
+
+  <header class="topbar-wrap" id="topbar-wrap">
+    <div class="topbar">
+      <div class="topbar-left">
+        <a class="brand" href="{{ url_for('index') }}">
+          <span class="brand-mark">{{ icon("wand") }}</span>
+          <span class="brand-text">
+            <span class="brand-title">Conversor CIGAM</span>
+            <span class="brand-sub">Planilha do cliente &rarr; layout de importação</span>
+          </span>
+        </a>
+        <nav class="topnav">
+          <a class="topnav-link {{ 'active' if request.endpoint in ('index', 'enviar', 'escolher_aba', 'definir_aba', 'mapear', 'converter', 'download') else '' }}" href="{{ url_for('index') }}">Converter</a>
+          <a class="topnav-link {{ 'active' if request.endpoint and request.endpoint.startswith('limpeza') else '' }}" href="{{ url_for('limpeza') }}">Limpeza de base</a>
+        </nav>
+      </div>
+      <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Alternar tema">
+        {{ icon("sun", "icon-sun") }}
+        {{ icon("moon", "icon-moon") }}
+      </button>
+    </div>
+  </header>
+
+  <main class="container{{ ' wide' if wide else '' }}">
+    {% if passo_atual %}
+    {% set urls_passo = [url_for('index'), url_for('escolher_aba'), url_for('mapear')] %}
+    <ol class="stepper">
+      {% for label in ["Enviar arquivo", "Escolher tabela", "Mapear campos"] %}
+        {% set n = loop.index %}
+        {% set feito = concluido or n < passo_atual %}
+        {% set ativo = (n == passo_atual and not concluido) %}
+        <li class="step {{ 'done' if feito else '' }} {{ 'active' if ativo else '' }}">
+          {% if feito %}
+          <a class="step-link" href="{{ urls_passo[n-1] }}">
+            <span class="step-circle">{{ icon("check-circle") }}</span>
+            <span class="step-label">{{ label }}</span>
+          </a>
+          {% else %}
+          <span class="step-circle">{{ n }}</span>
+          <span class="step-label">{{ label }}</span>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ol>
+    {% endif %}
+
+    {% block conteudo %}{% endblock %}
+  </main>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

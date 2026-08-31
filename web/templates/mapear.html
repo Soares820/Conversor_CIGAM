@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% set wide = true %}
+{% block conteudo %}
+<div class="page-head">
+  <h1>Mapeie os campos &mdash; <span class="badge badge-accent">{{ tabela }}</span></h1>
+  <p>Revise o De-Para sugerido automaticamente, marque as colunas que formam a chave (PK) e as obrigatórias.</p>
+</div>
+
+<div class="card">
+  <form method="post" action="{{ url_for('converter') }}">
+    <div class="toolbar">
+      <div class="search-box">
+        {{ icon("search") }}
+        <input type="text" id="filtro-colunas" placeholder="Filtrar colunas CIGAM...">
+      </div>
+      <span class="counter" id="contador-mapeados"></span>
+    </div>
+
+    <div class="table-scroll">
+      <table class="mapa" id="tabela-mapa">
+        <thead>
+          <tr>
+            <th>Coluna CIGAM</th>
+            <th>Regra</th>
+            <th>Default</th>
+            <th>Coluna do cliente</th>
+            <th>PK</th>
+            <th>Obrigatório</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for info in colunas_info %}
+          <tr data-sem-default="{{ 'true' if info.default is none else 'false' }}">
+            <td class="col-coluna">
+              {{ info.coluna }}
+              <span class="warn-dot" data-warn-dot hidden title="Obrigatório, sem valor do cliente nem default"></span>
+            </td>
+            <td>{% if info.regra %}<span class="badge badge-neutral">{{ info.regra }}</span>{% endif %}</td>
+            <td><code>{{ info.default if info.default is not none else "" }}</code></td>
+            <td>
+              <select name="map__{{ info.coluna }}">
+                <option value="">&mdash; usa default &mdash;</option>
+                {% for c in colunas_cliente %}
+                <option value="{{ c }}" {% if sugestao.get(info.coluna) == c %}selected{% endif %}>{{ c }}</option>
+                {% endfor %}
+              </select>
+            </td>
+            <td class="col-check"><input type="checkbox" name="pk" value="{{ info.coluna }}"></td>
+            <td class="col-check"><input type="checkbox" name="obrig" value="{{ info.coluna }}"></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p class="empty-msg" id="colunas-vazio" hidden>Nenhuma coluna encontrada para esse filtro.</p>
+    </div>
+
+    <div class="sticky-footer">
+      <div class="field">
+        <label for="saida_nome">Nome base dos arquivos de saída</label>
+        <input type="text" id="saida_nome" name="saida_nome" value="{{ nome_saida_padrao }}">
+      </div>
+      <label class="switch">
+        <input type="checkbox" name="truncar" value="1">
+        <span class="switch-track"><span class="switch-thumb"></span></span>
+        Truncar valores maiores que o limite (em vez de só avisar)
+      </label>
+      <button type="submit" class="btn btn-primary" data-loading-text="Convertendo...">
+        Converter {{ icon("arrow-right") }}
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}
