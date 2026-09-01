@@ -29,6 +29,7 @@ from pathlib import Path
 from cigam_conversor import (
     CigamTemplate,
     Conversor,
+    construir_lookup_empresas,
     detectar_forcar_sinal,
     gerar_sql_promocao,
     gerar_sql_staging,
@@ -73,11 +74,16 @@ def cmd_converter(args):
     pk = args.pk.split(",") if args.pk else None
     obrig = args.obrigatorios.split(",") if args.obrigatorios else None
 
+    lookup = None
+    if args.referencia_empresas and "Cd_empresa" in t.colunas:
+        _, registros_referencia = ler_planilha_cliente(args.referencia_empresas)
+        lookup = {"Cd_empresa": construir_lookup_empresas(registros_referencia)}
+
     conv = Conversor(t)
     res = conv.converter(
         registros, mapa,
         truncar=args.truncar, pk=pk, obrigatorios=obrig,
-        forcar_sinal=detectar_forcar_sinal(t),
+        forcar_sinal=detectar_forcar_sinal(t), lookup=lookup,
     )
 
     base = Path(args.saida)
@@ -129,6 +135,11 @@ def main():
     pv.add_argument("--pk", default="")
     pv.add_argument("--obrigatorios", default="")
     pv.add_argument("--truncar", action="store_true")
+    pv.add_argument(
+        "--referencia-empresas", dest="referencia_empresas", default=None,
+        help="planilha com SELECT * FROM GEEMPRES (cabecalho incluso), "
+             "usada pra resolver Cd_empresa por nome/razao social/fantasia/CNPJ",
+    )
     pv.set_defaults(func=cmd_converter)
 
     args = p.parse_args()

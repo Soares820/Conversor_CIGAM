@@ -7,8 +7,26 @@
   <p>Revise o De-Para sugerido automaticamente e marque as colunas que formam a chave (PK). "Obrigatório" já vem pré-marcado nos campos sem default no gabarito — é um ponto de partida, não uma certeza: revise antes de converter.</p>
 </div>
 
+{% if tem_cd_empresa %}
 <div class="card">
-  <form method="post" action="{{ url_for('converter') }}">
+  <div class="section-head" style="margin-top:0;">
+    <h2>Planilha de referência — Empresas (GEEMPRES)</h2>
+    <p>Essa tabela usa <code>Cd_empresa</code>. Se a coluna do cliente trouxer nome, razão social, fantasia ou CNPJ/CPF em vez do código, envie aqui um <code>SELECT * FROM GEEMPRES</code> (com cabeçalho) pra gente resolver automaticamente. Sem isso, o valor do cliente é usado direto.</p>
+  </div>
+  <div class="dropzone" data-dropzone>
+    <input type="file" id="referencia_empresas" name="referencia_empresas" form="form-mapear" accept=".xlsx,.xls,.csv,.tsv">
+    <label for="referencia_empresas" class="dropzone-inner">
+      {{ icon("upload-cloud") }}
+      <span class="dropzone-title">Arraste a planilha de empresas aqui</span>
+      <span class="dropzone-sub">opcional &mdash; ou clique para selecionar</span>
+      <span class="dropzone-file" data-filename hidden>{{ icon("check-circle") }}<span data-filename-text></span></span>
+    </label>
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <form method="post" action="{{ url_for('converter') }}" enctype="multipart/form-data" id="form-mapear">
     <input type="hidden" name="aba" value="{{ aba }}">
     <textarea name="registros_json" hidden>{{ registros_json }}</textarea>
     <textarea name="modelo_custom_b64" hidden>{{ modelo_custom_b64 }}</textarea>

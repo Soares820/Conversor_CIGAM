@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any
 
+from .leitor_cliente import _normalizar_documento, _normalizar_texto
 from .template import CigamTemplate
 
 
@@ -79,6 +80,7 @@ class Conversor:
         pk: list[str] | None = None,
         obrigatorios: list[str] | None = None,
         forcar_sinal: dict[str, str] | None = None,
+        lookup: dict[str, dict[str, dict[str, str]]] | None = None,
     ) -> ResultadoConversao:
         """
         linhas_cliente : lista de dicts (uma por registro do cliente).
@@ -93,6 +95,10 @@ class Conversor:
                          exemplo, Valor/Vl_saldo tem que ser negativo em
                          Contas a Pagar e positivo em Contas a Receber,
                          independente do sinal que o cliente mandou.
+        lookup         : {coluna: tabelas} onde tabelas e o dict devolvido
+                         por construir_lookup_empresas — troca o valor
+                         (nome, razao social, fantasia ou CNPJ/CPF) pelo
+                         Cd_empresa correspondente. Gera erro se nao achar.
         """
         self._validar_mapeamento(mapeamento)
 
@@ -102,7 +108,7 @@ class Conversor:
         obrig = set(obrigatorios or [])
 
         for i, reg in enumerate(linhas_cliente, start=1):
-            linha = self._montar_linha(reg, mapeamento, i, obrig, truncar, oc, forcar_sinal)
+            linha = self._montar_linha(reg, mapeamento, i, obrig, truncar, oc, forcar_sinal, lookup)
             linhas.append(linha)
 
             if pk:
@@ -138,11 +144,15 @@ class Conversor:
         truncar: bool,
         oc: list[Ocorrencia],
         forcar_sinal: dict[str, str] | None = None,
+        lookup: dict[str, dict] | None = None,
     ) -> list[Any]:
         linha: list[Any] = []
         for idx, col in enumerate(self.t.colunas):
             origem = mapeamento.get(col)
             valor = reg.get(origem) if origem else None
+
+            if lookup and col in lookup and valor not in (None, ""):
+                valor = self._resolver_lookup(valor, col, lookup[col], i, oc)
 
             if valor in (None, ""):
                 if col in obrig:
@@ -158,6 +168,25 @@ class Conversor:
 
             linha.append(valor)
         return linha
+
+    def _resolver_lookup(
+        self, valor: Any, col: str, tabelas: dict, i: int, oc: list[Ocorrencia],
+    ) -> Any:
+        bruto = str(valor).strip()
+
+        doc = _normalizar_documento(bruto)
+        if doc and doc in tabelas.get("documento", {}):
+            return tabelas["documento"][doc]
+
+        nome = _normalizar_texto(bruto)
+        if nome in tabelas.get("nome", {}):
+            return tabelas["nome"][nome]
+
+        oc.append(Ocorrencia(
+            "erro", i, col,
+            f"'{valor}' não encontrado na planilha de referência (nem por CNPJ/CPF, nem por nome)",
+        ))
+        return None
 
     def _aplicar_sinal(
         self, valor: Any, col: str, sinal: str, i: int, oc: list[Ocorrencia],

@@ -83,6 +83,15 @@ else:
   excede o limite declarado na `R2`.
 - **PK duplicada** — erro quando duas linhas repetem a chave informada em `--pk`.
 - **Obrigatórios** — erro quando um campo de `--obrigatorios` fica vazio.
+- **Sinal de Valor/Vl_saldo em GFLANCAM** — forçado automaticamente
+  (negativo em Contas a Pagar, positivo em Contas a Receber), a partir
+  do `Cd_tipo` do gabarito. Gera aviso quando precisa corrigir o sinal.
+- **Cd_empresa por nome/CNPJ** — em tabelas com `Cd_empresa` (Contas a
+  Pagar/Receber), dá pra mandar um `SELECT * FROM GEEMPRES` do banco
+  (com cabeçalho) como planilha de referência — `--referencia-empresas`
+  no CLI, upload na tela de mapeamento na web — e o valor do cliente
+  (nome, razão social, fantasia ou CNPJ/CPF, em qualquer formatação) é
+  resolvido pro código real. Gera erro quando não encontra correspondência.
 
 Enquanto houver **erro**, o comando avisa para não carregar no banco.
 Avisos não bloqueiam.

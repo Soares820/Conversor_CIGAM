@@ -36,9 +36,9 @@ from flask import Flask, flash, render_template, request
 from werkzeug.utils import secure_filename
 
 from cigam_conversor import (
-    CigamTemplate, Conversor, detectar_forcar_sinal, gerar_sql_promocao,
-    gerar_sql_staging, gerar_xlsx, ler_planilha_cliente, listar_abas,
-    sugerir_mapeamento,
+    CigamTemplate, Conversor, construir_lookup_empresas, detectar_forcar_sinal,
+    gerar_sql_promocao, gerar_sql_staging, gerar_xlsx, ler_planilha_cliente,
+    listar_abas, sugerir_mapeamento,
 )
 
 RAIZ = Path(__file__).resolve().parent.parent
@@ -155,6 +155,7 @@ def definir_aba():
         nome_saida_padrao=t.tabela,
         registros_json=registros_json,
         modelo_custom_b64=modelo_custom_b64,
+        tem_cd_empresa="Cd_empresa" in t.colunas,
         passo_atual=3,
     )
 
@@ -183,9 +184,19 @@ def converter():
     obrigatorios = request.form.getlist("obrig") or None
     truncar = bool(request.form.get("truncar"))
 
+    lookup = None
+    referencia = request.files.get("referencia_empresas")
+    if referencia and referencia.filename and "Cd_empresa" in t.colunas:
+        try:
+            _, registros_referencia = ler_planilha_cliente(referencia)
+            lookup = {"Cd_empresa": construir_lookup_empresas(registros_referencia)}
+        except Exception as exc:
+            flash(f"Não foi possível ler a planilha de referência de empresas: {exc}", "erro")
+            return render_template("upload.html", passo_atual=1)
+
     res = Conversor(t).converter(
         registros, mapa, truncar=truncar, pk=pk, obrigatorios=obrigatorios,
-        forcar_sinal=detectar_forcar_sinal(t),
+        forcar_sinal=detectar_forcar_sinal(t), lookup=lookup,
     )
 
     nome = secure_filename(request.form.get("saida_nome") or t.tabela) or t.tabela
