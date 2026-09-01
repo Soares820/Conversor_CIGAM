@@ -36,8 +36,9 @@ from flask import Flask, flash, render_template, request
 from werkzeug.utils import secure_filename
 
 from cigam_conversor import (
-    CigamTemplate, Conversor, gerar_sql_promocao, gerar_sql_staging,
-    gerar_xlsx, ler_planilha_cliente, listar_abas, sugerir_mapeamento,
+    CigamTemplate, Conversor, detectar_forcar_sinal, gerar_sql_promocao,
+    gerar_sql_staging, gerar_xlsx, ler_planilha_cliente, listar_abas,
+    sugerir_mapeamento,
 )
 
 RAIZ = Path(__file__).resolve().parent.parent
@@ -184,6 +185,7 @@ def converter():
 
     res = Conversor(t).converter(
         registros, mapa, truncar=truncar, pk=pk, obrigatorios=obrigatorios,
+        forcar_sinal=detectar_forcar_sinal(t),
     )
 
     nome = secure_filename(request.form.get("saida_nome") or t.tabela) or t.tabela

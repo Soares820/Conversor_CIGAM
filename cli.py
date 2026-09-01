@@ -29,6 +29,7 @@ from pathlib import Path
 from cigam_conversor import (
     CigamTemplate,
     Conversor,
+    detectar_forcar_sinal,
     gerar_sql_promocao,
     gerar_sql_staging,
     gerar_xlsx,
@@ -76,6 +77,7 @@ def cmd_converter(args):
     res = conv.converter(
         registros, mapa,
         truncar=args.truncar, pk=pk, obrigatorios=obrig,
+        forcar_sinal=detectar_forcar_sinal(t),
     )
 
     base = Path(args.saida)

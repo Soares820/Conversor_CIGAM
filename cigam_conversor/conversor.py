@@ -46,6 +46,23 @@ class ResultadoConversao:
         return not self.erros
 
 
+def detectar_forcar_sinal(template: CigamTemplate) -> dict[str, str] | None:
+    """
+    Em GFLANCAM, Valor/Vl_saldo tem que ser negativo em Contas a Pagar e
+    positivo em Contas a Receber — o gabarito ja marca isso no default de
+    Cd_tipo ('P' ou 'R') de cada aba. Devolve o forcar_sinal pronto pra
+    passar em Conversor.converter, ou None se a tabela nao for essa.
+    """
+    if template.tabela != "GFLANCAM" or "Cd_tipo" not in template.colunas:
+        return None
+    tipo_default = template.defaults[template.indice("Cd_tipo")]
+    sinal = {"P": "negativo", "R": "positivo"}.get(tipo_default)
+    if not sinal:
+        return None
+    campos = [c for c in ("Valor", "Vl_saldo") if c in template.colunas]
+    return {c: sinal for c in campos} if campos else None
+
+
 class Conversor:
     """Converte linhas do cliente para o layout de uma tabela CIGAM."""
 
@@ -61,6 +78,7 @@ class Conversor:
         truncar: bool = False,
         pk: list[str] | None = None,
         obrigatorios: list[str] | None = None,
+        forcar_sinal: dict[str, str] | None = None,
     ) -> ResultadoConversao:
         """
         linhas_cliente : lista de dicts (uma por registro do cliente).
@@ -69,6 +87,12 @@ class Conversor:
                          campo (senao, apenas gera aviso).
         pk             : colunas CIGAM que formam a chave (checa duplicidade).
         obrigatorios   : colunas CIGAM que nao podem ficar vazias.
+        forcar_sinal   : {coluna: "negativo"|"positivo"} — forca o sinal do
+                         valor numerico (usa o valor absoluto do que veio do
+                         cliente/default). Existe porque em GFLANCAM, por
+                         exemplo, Valor/Vl_saldo tem que ser negativo em
+                         Contas a Pagar e positivo em Contas a Receber,
+                         independente do sinal que o cliente mandou.
         """
         self._validar_mapeamento(mapeamento)
 
@@ -78,7 +102,7 @@ class Conversor:
         obrig = set(obrigatorios or [])
 
         for i, reg in enumerate(linhas_cliente, start=1):
-            linha = self._montar_linha(reg, mapeamento, i, obrig, truncar, oc)
+            linha = self._montar_linha(reg, mapeamento, i, obrig, truncar, oc, forcar_sinal)
             linhas.append(linha)
 
             if pk:
@@ -113,6 +137,7 @@ class Conversor:
         obrig: set[str],
         truncar: bool,
         oc: list[Ocorrencia],
+        forcar_sinal: dict[str, str] | None = None,
     ) -> list[Any]:
         linha: list[Any] = []
         for idx, col in enumerate(self.t.colunas):
@@ -128,8 +153,24 @@ class Conversor:
             else:
                 valor = self._checar_tamanho(valor, idx, col, i, truncar, oc)
 
+            if forcar_sinal and col in forcar_sinal:
+                valor = self._aplicar_sinal(valor, col, forcar_sinal[col], i, oc)
+
             linha.append(valor)
         return linha
+
+    def _aplicar_sinal(
+        self, valor: Any, col: str, sinal: str, i: int, oc: list[Ocorrencia],
+    ) -> Any:
+        if not isinstance(valor, (int, float)) or isinstance(valor, bool):
+            return valor
+        alvo = -abs(valor) if sinal == "negativo" else abs(valor)
+        if alvo != valor:
+            oc.append(Ocorrencia(
+                "aviso", i, col,
+                f"sinal ajustado para {sinal} (era {valor}, virou {alvo})",
+            ))
+        return alvo
 
     def _checar_tamanho(
         self, valor: Any, idx: int, col: str, i: int,
