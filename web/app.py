@@ -166,8 +166,17 @@ def converter():
     if not (modelo_path and cliente_path and aba):
         return redirect(url_for("index"))
 
-    t = CigamTemplate.de_arquivo(modelo_path, aba)
-    _, registros = ler_planilha_cliente(cliente_path)
+    try:
+        t = CigamTemplate.de_arquivo(modelo_path, aba)
+        _, registros = ler_planilha_cliente(cliente_path)
+    except Exception:
+        flash(
+            "Não foi possível ler a planilha ou o modelo — provavelmente a "
+            "sessão expirou (isso pode acontecer se a etapa de mapeamento "
+            "ficar aberta por muito tempo). Envie a planilha novamente.",
+            "erro",
+        )
+        return redirect(url_for("index"))
 
     mapa = {}
     for col in t.colunas:

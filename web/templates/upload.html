@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% from "_icons.html" import icon %}
 {% block conteudo %}
-<div class="page-head">
+<div class="page-head glass-panel">
   <h1>Envie a planilha do cliente</h1>
   <p>Aceita .xlsx, .xls, .csv ou .tsv. Na próxima etapa você escolhe a tabela CIGAM de destino.</p>
 </div>
@@ -16,7 +16,7 @@
           {{ icon("upload-cloud") }}
           <span class="dropzone-title">Arraste o arquivo aqui</span>
           <span class="dropzone-sub">ou clique para selecionar</span>
-          <span class="dropzone-file" data-filename hidden>{{ icon("check-circle") }}</span>
+          <span class="dropzone-file" data-filename hidden>{{ icon("check-circle") }}<span data-filename-text></span></span>
         </label>
       </div>
     </div>
@@ -33,7 +33,7 @@
             {{ icon("upload-cloud") }}
             <span class="dropzone-title">Arraste o gabarito aqui</span>
             <span class="dropzone-sub">se não enviar, usa o gabarito padrão do projeto</span>
-            <span class="dropzone-file" data-filename hidden>{{ icon("check-circle") }}</span>
+            <span class="dropzone-file" data-filename hidden>{{ icon("check-circle") }}<span data-filename-text></span></span>
           </label>
         </div>
       </div>

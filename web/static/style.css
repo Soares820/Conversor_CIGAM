@@ -490,6 +490,7 @@ input[type="checkbox"] {
   color: var(--text);
 }
 .dropzone-file svg { width: 15px; height: 15px; color: var(--success); margin: 0; }
+.dropzone-file[hidden] { display: none; }
 
 .advanced-toggle {
   display: inline-flex;
@@ -597,6 +598,7 @@ input[type="checkbox"] {
   margin-left: 0.4rem;
   vertical-align: middle;
 }
+.warn-dot[hidden] { display: none; }
 
 .empty-msg {
   text-align: center;
