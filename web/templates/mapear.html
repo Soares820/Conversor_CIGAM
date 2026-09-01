@@ -4,7 +4,7 @@
 {% block conteudo %}
 <div class="page-head glass-panel">
   <h1>Mapeie os campos &mdash; <span class="badge badge-accent">{{ tabela }}</span></h1>
-  <p>Revise o De-Para sugerido automaticamente, marque as colunas que formam a chave (PK) e as obrigatórias.</p>
+  <p>Revise o De-Para sugerido automaticamente e marque as colunas que formam a chave (PK). "Obrigatório" já vem pré-marcado nos campos sem default no gabarito — é um ponto de partida, não uma certeza: revise antes de converter.</p>
 </div>
 
 <div class="card">
@@ -50,7 +50,7 @@
               </select>
             </td>
             <td class="col-check"><input type="checkbox" name="pk" value="{{ info.coluna }}"></td>
-            <td class="col-check"><input type="checkbox" name="obrig" value="{{ info.coluna }}"></td>
+            <td class="col-check"><input type="checkbox" name="obrig" value="{{ info.coluna }}" {% if info.default is none %}checked{% endif %}></td>
           </tr>
           {% endfor %}
         </tbody>
