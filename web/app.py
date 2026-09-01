@@ -21,6 +21,7 @@ Depois abrir http://127.0.0.1:5000
 from __future__ import annotations
 
 import base64
+import gzip
 import io
 import json
 import os
@@ -57,22 +58,51 @@ def _tamanho_legivel(n: float) -> str:
 
 
 # ---------------------------------------------------- serializacao ------ #
+# Os dados da planilha viajam dentro do proprio HTML (campo oculto) entre
+# uma etapa e outra — nao tem onde guardar em disco de forma confiavel em
+# serverless (ver cabecalho do arquivo). Isso tem um teto: a Vercel rejeita
+# requisicao/resposta acima de ~4.5 MB (erro 413 PAYLOAD_TOO_LARGE). Pra
+# aguentar tabelas largas (GEEMPRES tem 101 colunas) sem estourar isso:
+#   - formato colunar (colunas uma vez so + linhas como listas), em vez de
+#     repetir o nome de cada coluna em cada registro;
+#   - gzip antes do base64.
+# Ainda assim tem um limite pratico de tamanho — ver LIMITE_PAYLOAD_BYTES.
+LIMITE_PAYLOAD_BYTES = 3 * 1024 * 1024  # 3 MB, com folga sob o teto da Vercel
+
+
+def _json_default(o):
+    if isinstance(o, (datetime, date)):
+        return {"__date__": o.isoformat()}
+    if hasattr(o, "item"):  # escalar numpy
+        return o.item()
+    return str(o)
+
+
+def _json_object_hook(d):
+    if set(d.keys()) == {"__date__"}:
+        return datetime.fromisoformat(d["__date__"])
+    return d
+
+
 def _serializar_registros(registros: list[dict]) -> str:
-    def default(o):
-        if isinstance(o, (datetime, date)):
-            return {"__date__": o.isoformat()}
-        if hasattr(o, "item"):  # escalar numpy
-            return o.item()
-        return str(o)
-    return json.dumps(registros, default=default)
+    colunas = list(registros[0].keys()) if registros else []
+    linhas = [[reg.get(c) for c in colunas] for reg in registros]
+    bruto = json.dumps(
+        {"colunas": colunas, "linhas": linhas},
+        default=_json_default, separators=(",", ":"), ensure_ascii=False,
+    )
+    return base64.b64encode(gzip.compress(bruto.encode("utf-8"))).decode("ascii")
 
 
 def _desserializar_registros(texto: str) -> list[dict]:
-    def object_hook(d):
-        if set(d.keys()) == {"__date__"}:
-            return datetime.fromisoformat(d["__date__"])
-        return d
-    return json.loads(texto, object_hook=object_hook)
+    bruto = gzip.decompress(base64.b64decode(texto)).decode("utf-8")
+    dados = json.loads(bruto, object_hook=_json_object_hook)
+    colunas = dados["colunas"]
+    return [dict(zip(colunas, linha)) for linha in dados["linhas"]]
+
+
+def _payload_grande_demais(*partes: str) -> bool:
+    return sum(len(p) for p in partes) > LIMITE_PAYLOAD_BYTES
 
 
 def _resolver_modelo(modelo_custom_b64: str | None):
@@ -106,12 +136,24 @@ def enviar():
         flash(f"Não foi possível ler a planilha ou o modelo: {exc}", "erro")
         return render_template("upload.html", passo_atual=1)
 
+    registros_json = _serializar_registros(registros)
+    modelo_custom_b64 = base64.b64encode(modelo_bytes).decode("ascii") if modelo_bytes else ""
+
+    if _payload_grande_demais(registros_json, modelo_custom_b64):
+        flash(
+            "Essa planilha (ou o modelo customizado) é grande demais para "
+            "esse fluxo — o servidor tem um limite de tamanho por "
+            "requisição. Tente dividir os dados em arquivos menores.",
+            "erro",
+        )
+        return render_template("upload.html", passo_atual=1)
+
     return render_template(
         "escolher_aba.html",
         abas=abas,
-        registros_json=_serializar_registros(registros),
+        registros_json=registros_json,
         colunas_cliente_json=json.dumps(colunas_cliente),
-        modelo_custom_b64=base64.b64encode(modelo_bytes).decode("ascii") if modelo_bytes else "",
+        modelo_custom_b64=modelo_custom_b64,
         passo_atual=2,
     )
 
