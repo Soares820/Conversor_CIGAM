@@ -4,7 +4,7 @@
 {% block conteudo %}
 <div class="page-head glass-panel">
   <h1>Limpeza de base</h1>
-  <p>Orientação para preparar a base CIGAM antes da entrada em produção: o que o conversor já valida sozinho e o checklist do que conferir manualmente antes da carga.</p>
+  <p>Referência para a entrada em produção: o que o conversor já valida sozinho, o fluxo de carga recomendado e a ordem de dependência entre tabelas.</p>
 </div>
 
 <div class="section-head glass-panel">
@@ -15,46 +15,39 @@
   <div class="info-card">
     <span class="info-card-icon">{{ icon("alert-triangle") }}</span>
     <h3>Tamanho de campo</h3>
-    <p>Cada coluna do gabarito CIGAM tem um limite (ex.: "20 caracteres" na linha R2). Se o valor do cliente ultrapassa esse limite, gera um aviso — ou é truncado automaticamente se a opção "Truncar" estiver marcada na tela de mapeamento.</p>
+    <p>Avisa (ou trunca, com a opção "Truncar") quando o valor excede o limite declarado na R2 do gabarito.</p>
   </div>
   <div class="info-card">
     <span class="info-card-icon">{{ icon("alert-circle") }}</span>
     <h3>PK duplicada</h3>
-    <p>As colunas escolhidas como chave (ex.: grupo + subgrupo + material) não podem se repetir entre as linhas enviadas. Se duas linhas tiverem a mesma combinação, a segunda é marcada como erro.</p>
+    <p>Erro quando duas linhas repetem a chave (PK) escolhida na tela de mapeamento.</p>
   </div>
   <div class="info-card">
     <span class="info-card-icon">{{ icon("alert-circle") }}</span>
-    <h3>Campo obrigatório vazio</h3>
-    <p>Colunas marcadas como obrigatórias precisam vir preenchidas pelo cliente ou ter um default no gabarito. Sem os dois, a linha é marcada como erro e não deve ser carregada no banco.</p>
+    <h3>Obrigatórios</h3>
+    <p>Erro quando um campo marcado como obrigatório fica vazio.</p>
   </div>
 </div>
 
 <div class="section-head glass-panel">
-  <h2>Checklist: preparar a base CIGAM antes da entrada em produção</h2>
-  <p>Fica salvo neste navegador — marque conforme for concluindo antes de rodar a promoção.</p>
+  <h2>Fluxo recomendado de carga no SQL Server</h2>
 </div>
 <div class="card">
-  <div class="checklist-progress">
-    <div class="checklist-progress-bar"><div class="checklist-progress-fill" id="checklist-progress-fill"></div></div>
-    <span class="checklist-progress-label" id="checklist-progress-label"></span>
-  </div>
-  <ul class="checklist" id="checklist-cigam">
-    {% set itens = [
-      ("backup", "Fazer backup do banco (ou snapshot da base de homologação) antes de qualquer carga."),
-      ("staging", "Rodar o *_staging.sql primeiro e conferir a contagem de linhas antes de promover."),
-      ("registros-teste", "Verificar se já existem registros de teste/homologação com os mesmos códigos que serão importados."),
-      ("ordem-carga", "Respeitar a ordem de carga: cadastros-base (ESGRUPO, ESSUBGRU, ESCLASFI, GEEMPRES) antes das tabelas que dependem deles (ESMATERI, GFLANCAM)."),
-      ("conferir-total", "Depois da promoção, comparar o total de linhas na tabela CIGAM com o total esperado da planilha."),
-      ("arquivar-scripts", "Arquivar ou remover os scripts de staging já promovidos, para não rodar duas vezes por engano."),
-    ] %}
-    {% for id, texto in itens %}
-    <li>
-      <label class="checklist-item" data-item-id="{{ id }}">
-        <input type="checkbox">
-        <span>{{ texto }}</span>
-      </label>
-    </li>
-    {% endfor %}
+  <ol class="wiki-steps">
+    <li>Rode o <code>*_staging.sql</code> para popular a <code>stg_&lt;TABELA&gt;</code>.</li>
+    <li>Confira os dados na staging (contagens, amostragem).</li>
+    <li>Rode o <code>*_promocao.sql</code> para inserir na tabela CIGAM real (ele pula registros cuja PK já existe).</li>
+  </ol>
+</div>
+
+<div class="section-head glass-panel">
+  <h2>Ordem de carga (dependências)</h2>
+  <p>Cadastros-base antes dos que dependem deles.</p>
+</div>
+<div class="card">
+  <ul class="wiki-list">
+    <li><code>ESGRUPO</code>, <code>ESSUBGRU</code>, <code>ESCLASFI</code> <strong>antes de</strong> <code>ESMATERI</code></li>
+    <li><code>GEEMPRES</code> <strong>antes de</strong> <code>GFLANCAM</code> (contas a pagar/receber)</li>
   </ul>
 </div>
 {% endblock %}

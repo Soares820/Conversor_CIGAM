@@ -849,40 +849,15 @@ table.ocorrencias th {
 .info-card h3 { font-size: 0.95rem; font-weight: 700; margin: 0 0 0.4rem; }
 .info-card p { margin: 0; font-size: 0.85rem; color: var(--text-muted); }
 
-.option-list { display: flex; flex-direction: column; gap: 0.75rem; margin: 1.25rem 0; }
-
-.checklist { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem; }
-.checklist-item {
+.wiki-steps, .wiki-list {
+  margin: 0;
+  padding-left: 1.4rem;
   display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding: 0.8rem 1rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--surface);
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  flex-direction: column;
+  gap: 0.6rem;
+  font-size: 0.92rem;
 }
-.checklist-item:hover { background: var(--surface-hover); }
-.checklist-item input { margin-top: 0.15rem; flex-shrink: 0; }
-.checklist-item span { font-size: 0.9rem; line-height: 1.45; }
-.checklist-item.done { background: var(--success-soft); border-color: transparent; }
-.checklist-item.done span { color: var(--text-muted); text-decoration: line-through; }
-
-.checklist-progress {
-  display: flex; align-items: center; gap: 0.75rem;
-  margin-bottom: 1rem;
-}
-.checklist-progress-bar {
-  flex: 1; height: 8px; border-radius: 999px;
-  background: var(--surface-2); overflow: hidden;
-}
-.checklist-progress-fill {
-  height: 100%; background: var(--success);
-  border-radius: 999px; transition: width 0.25s ease-out;
-  width: 0%;
-}
-.checklist-progress-label { font-size: 0.82rem; font-weight: 650; color: var(--text-muted); white-space: nowrap; }
+.wiki-steps li, .wiki-list li { padding-left: 0.2rem; }
 
 /* ------------------------------------------------------------------ */
 /*  Fundo de particulas (pagina de limpeza de base)                    */

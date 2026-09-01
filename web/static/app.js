@@ -294,40 +294,6 @@ function initParticlesBackground() {
   tentarIniciar();
 }
 
-function initChecklist() {
-  const lista = document.getElementById("checklist-cigam");
-  if (!lista) return;
-  const itens = Array.from(lista.querySelectorAll(".checklist-item"));
-  const barra = document.getElementById("checklist-progress-fill");
-  const label = document.getElementById("checklist-progress-label");
-
-  let salvo = {};
-  try { salvo = JSON.parse(localStorage.getItem("cigam-checklist") || "{}"); } catch (e) { salvo = {}; }
-
-  const atualizarProgresso = () => {
-    const feitos = itens.filter((li) => li.classList.contains("done")).length;
-    if (barra) barra.style.width = `${itens.length ? (feitos / itens.length) * 100 : 0}%`;
-    if (label) label.textContent = `${feitos} de ${itens.length} concluídos`;
-  };
-
-  itens.forEach((li) => {
-    const input = li.querySelector('input[type="checkbox"]');
-    const id = li.dataset.itemId;
-    if (!input || !id) return;
-    if (salvo[id]) {
-      input.checked = true;
-      li.classList.add("done");
-    }
-    input.addEventListener("change", () => {
-      li.classList.toggle("done", input.checked);
-      salvo[id] = input.checked;
-      try { localStorage.setItem("cigam-checklist", JSON.stringify(salvo)); } catch (e) { /* sem storage */ }
-      atualizarProgresso();
-    });
-  });
-  atualizarProgresso();
-}
-
 document.addEventListener("DOMContentLoaded", () => {
   initTheme();
   initTopbarScroll();
@@ -344,6 +310,5 @@ document.addEventListener("DOMContentLoaded", () => {
   initStagger(".info-card", 60, 240);
   initStagger(".table-card:not([hidden])", 25, 300);
   initContadoresAnimados();
-  initChecklist();
   initParticlesBackground();
 });

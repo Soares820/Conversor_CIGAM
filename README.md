@@ -107,10 +107,9 @@ waitress) apropriado.
 ## Limpeza de base
 
 Área separada da conversão, em `/limpeza` na interface web — sem upload
-de planilha, é só orientação para a entrada em produção: explica as
-validações acima e traz um checklist de preparação da base CIGAM antes
-da carga (backup, staging antes da promoção, ordem de carga, etc.), com
-o progresso salvo no navegador de quem está usando.
+de planilha, é uma wiki de referência: explica as validações acima e
+repete, em formato de consulta rápida, o fluxo de carga e a ordem de
+dependências já documentados nas seções abaixo.
 
 ## Fluxo recomendado de carga no SQL Server
 
