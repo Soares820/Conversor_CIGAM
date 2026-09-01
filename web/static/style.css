@@ -129,6 +129,8 @@ code {
 }
 
 .container {
+  position: relative;
+  z-index: 1;
   max-width: 720px;
   margin: 0 auto;
   padding: 0 1.5rem 4rem;
@@ -881,3 +883,36 @@ table.ocorrencias th {
   width: 0%;
 }
 .checklist-progress-label { font-size: 0.82rem; font-weight: 650; color: var(--text-muted); white-space: nowrap; }
+
+/* ------------------------------------------------------------------ */
+/*  Fundo de particulas (pagina de limpeza de base)                    */
+/* ------------------------------------------------------------------ */
+.particles-page-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background: linear-gradient(135deg, #e3f2fd 0%, #90caf9 55%, #64b5f6 100%);
+}
+.particles-page-bg canvas { position: absolute; inset: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .particles-page-bg { display: none; }
+}
+
+.glass-panel {
+  background: color-mix(in srgb, var(--surface) 74%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem 1.75rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .particles-page-bg {
+    background: linear-gradient(135deg, #000814 0%, #003566 55%, #0077b6 100%);
+  }
+}
+:root[data-theme="dark"] .particles-page-bg {
+  background: linear-gradient(135deg, #000814 0%, #003566 55%, #0077b6 100%);
+}

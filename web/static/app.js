@@ -226,6 +226,74 @@ function initContadoresAnimados() {
   });
 }
 
+function initParticlesBackground() {
+  const container = document.getElementById("particles-js");
+  if (!container || reducedMotion()) return;
+
+  const detectarEscuro = () => {
+    const atributo = document.documentElement.getAttribute("data-theme");
+    if (atributo === "dark") return true;
+    if (atributo === "light") return false;
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  };
+
+  const construir = (escuro) => {
+    if (typeof window.particlesJS !== "function") return;
+
+    const canvasAntigo = container.querySelector("canvas");
+    if (canvasAntigo) canvasAntigo.remove();
+    if (window.pJSDom && window.pJSDom.length > 0) {
+      window.pJSDom.forEach((p) => p.pJS.fn.vendors.destroypJS());
+      window.pJSDom = [];
+    }
+
+    const cores = escuro
+      ? { particulas: "#8b83ff", linhas: "#6d63ff", contorno: "#4842d6" }
+      : { particulas: "#4842d6", linhas: "#5b52f0", contorno: "#8b83ff" };
+
+    window.particlesJS("particles-js", {
+      particles: {
+        number: { value: 70, density: { enable: true, value_area: 900 } },
+        color: { value: cores.particulas },
+        shape: { type: "circle", stroke: { width: 0.5, color: cores.contorno } },
+        opacity: { value: 0.45, random: true, anim: { enable: true, speed: 1, opacity_min: 0.2 } },
+        size: { value: 3, random: true, anim: { enable: true, speed: 2, size_min: 1 } },
+        line_linked: { enable: true, distance: 150, color: cores.linhas, opacity: 0.22, width: 1 },
+        move: { enable: true, speed: 1.2, random: true, out_mode: "bounce" },
+      },
+      interactivity: {
+        detect_on: "canvas",
+        events: {
+          onhover: { enable: true, mode: "grab" },
+          onclick: { enable: true, mode: "push" },
+          resize: true,
+        },
+        modes: {
+          grab: { distance: 200, line_linked: { opacity: 0.6 } },
+          push: { particles_nb: 3 },
+        },
+      },
+      retina_detect: true,
+    });
+  };
+
+  const tentarIniciar = () => {
+    if (typeof window.particlesJS !== "function") {
+      setTimeout(tentarIniciar, 100);
+      return;
+    }
+    construir(detectarEscuro());
+
+    const observer = new MutationObserver(() => construir(detectarEscuro()));
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+      if (!document.documentElement.getAttribute("data-theme")) construir(detectarEscuro());
+    });
+  };
+  tentarIniciar();
+}
+
 function initChecklist() {
   const lista = document.getElementById("checklist-cigam");
   if (!lista) return;
@@ -277,4 +345,5 @@ document.addEventListener("DOMContentLoaded", () => {
   initStagger(".table-card:not([hidden])", 25, 300);
   initContadoresAnimados();
   initChecklist();
+  initParticlesBackground();
 });

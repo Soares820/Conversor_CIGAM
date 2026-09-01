@@ -106,12 +106,11 @@ waitress) apropriado.
 
 ## Limpeza de base
 
-Em `/limpeza` na interface web: explica as validações acima, oferece uma
-ferramenta para pré-limpar qualquer planilha (normaliza espaços, remove
-linhas 100% duplicadas e colunas vazias, com download do `.xlsx` limpo)
-e traz um checklist de preparação da base CIGAM antes da carga (backup,
-staging antes da promoção, ordem de carga, etc.) — o checklist marca o
-progresso salvo no navegador de quem está usando.
+Área separada da conversão, em `/limpeza` na interface web — sem upload
+de planilha, é só orientação para a entrada em produção: explica as
+validações acima e traz um checklist de preparação da base CIGAM antes
+da carga (backup, staging antes da promoção, ordem de carga, etc.), com
+o progresso salvo no navegador de quem está usando.
 
 ## Fluxo recomendado de carga no SQL Server
 
@@ -141,8 +140,7 @@ cigam-conversor/
 │   ├── template.py            # lê o gabarito de uma aba
 │   ├── leitor_cliente.py      # lê xlsx/csv do cliente + sugestão de De-Para
 │   ├── conversor.py           # aplica De-Para, injeta defaults, valida
-│   ├── saida.py               # gera XLSX, SQL staging e SQL promoção
-│   └── limpeza.py             # pré-limpeza de planilha (espaços, duplicados, colunas vazias)
+│   └── saida.py               # gera XLSX, SQL staging e SQL promoção
 └── web/                       # interface web (Flask) sobre o mesmo núcleo
     ├── app.py
     ├── templates/

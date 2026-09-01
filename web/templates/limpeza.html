@@ -1,12 +1,18 @@
 {% extends "base.html" %}
 {% from "_icons.html" import icon %}
+
+{% block page_bg %}
+<div id="particles-js" class="particles-page-bg"></div>
+<script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js" defer></script>
+{% endblock %}
+
 {% block conteudo %}
-<div class="page-head">
+<div class="page-head glass-panel">
   <h1>Limpeza de base</h1>
-  <p>Como o conversor valida os dados, uma ferramenta para pré-limpar a planilha do cliente e um checklist para preparar a base CIGAM antes da carga.</p>
+  <p>Orientação para preparar a base CIGAM antes da entrada em produção: o que o conversor já valida sozinho e o checklist do que conferir manualmente antes da carga.</p>
 </div>
 
-<div class="section-head">
+<div class="section-head glass-panel">
   <h2>Validações que o conversor já faz</h2>
   <p>Acontecem automaticamente na etapa de conversão — isso aqui é só para explicar o que cada aviso/erro significa.</p>
 </div>
@@ -28,94 +34,8 @@
   </div>
 </div>
 
-<div class="section-head">
-  <h2>Pré-limpeza da planilha do cliente</h2>
-  <p>Rode antes do mapeamento para tirar o "lixo" mais comum: espaços extras, linhas repetidas e colunas totalmente vazias.</p>
-</div>
-<div class="card">
-  <form method="post" action="{{ url_for('limpeza_processar') }}" enctype="multipart/form-data">
-    <div class="field">
-      <label for="arquivo">Planilha a limpar</label>
-      <div class="dropzone" data-dropzone>
-        <input type="file" id="arquivo" name="arquivo" accept=".xlsx,.xls,.csv,.tsv" required>
-        <label for="arquivo" class="dropzone-inner">
-          {{ icon("upload-cloud") }}
-          <span class="dropzone-title">Arraste o arquivo aqui</span>
-          <span class="dropzone-sub">ou clique para selecionar</span>
-          <span class="dropzone-file" data-filename hidden>{{ icon("check-circle") }}<span data-filename-text></span></span>
-        </label>
-      </div>
-    </div>
-
-    <div class="option-list">
-      <label class="switch">
-        <input type="checkbox" name="normalizar_espacos" value="1" checked>
-        <span class="switch-track"><span class="switch-thumb"></span></span>
-        Normalizar espaços (remove espaços duplicados e nas pontas)
-      </label>
-      <label class="switch">
-        <input type="checkbox" name="remover_duplicados" value="1" checked>
-        <span class="switch-track"><span class="switch-thumb"></span></span>
-        Remover linhas 100% duplicadas
-      </label>
-      <label class="switch">
-        <input type="checkbox" name="remover_colunas_vazias" value="1" checked>
-        <span class="switch-track"><span class="switch-thumb"></span></span>
-        Remover colunas totalmente vazias
-      </label>
-    </div>
-
-    <div class="actions-row">
-      <button type="submit" class="btn btn-primary" data-loading-text="Limpando...">
-        Limpar planilha {{ icon("wand") }}
-      </button>
-    </div>
-  </form>
-
-  {% if resultado %}
-  <div class="section-head">
-    <h2>Resultado da limpeza</h2>
-  </div>
-  <div class="stat-grid">
-    <div class="stat-card">
-      <span class="num" data-count="{{ linhas_originais }}">{{ linhas_originais }}</span>
-      <span class="label">Linhas originais</span>
-    </div>
-    <div class="stat-card success">
-      <span class="num" data-count="{{ resultado.linhas_removidas }}">{{ resultado.linhas_removidas }}</span>
-      <span class="label">Linhas duplicadas removidas</span>
-    </div>
-    <div class="stat-card success">
-      <span class="num" data-count="{{ resultado.celulas_normalizadas }}">{{ resultado.celulas_normalizadas }}</span>
-      <span class="label">Células com espaços corrigidos</span>
-    </div>
-    <div class="stat-card {{ 'warning' if resultado.colunas_vazias_removidas else '' }}">
-      <span class="num" data-count="{{ resultado.colunas_vazias_removidas|length }}">{{ resultado.colunas_vazias_removidas|length }}</span>
-      <span class="label">Colunas vazias removidas</span>
-    </div>
-  </div>
-
-  {% if resultado.colunas_vazias_removidas %}
-  <p style="color:var(--text-muted); font-size:0.85rem; margin-top:-0.5rem;">
-    Colunas removidas: {{ resultado.colunas_vazias_removidas|join(", ") }}
-  </p>
-  {% endif %}
-
-  <div class="download-grid">
-    <a class="download-card" href="{{ url_for('limpeza_download', nome_arquivo=arquivo_saida) }}">
-      <span class="download-card-icon xlsx">{{ icon("file-excel") }}</span>
-      <span>
-        <span class="download-card-name">{{ arquivo_saida }}</span><br>
-        <span class="download-card-size">{{ resultado.registros|length }} linhas &middot; {{ resultado.colunas|length }} colunas</span>
-      </span>
-      <span class="download-card-go">{{ icon("download") }}</span>
-    </a>
-  </div>
-  {% endif %}
-</div>
-
-<div class="section-head">
-  <h2>Checklist: preparar a base CIGAM antes da carga</h2>
+<div class="section-head glass-panel">
+  <h2>Checklist: preparar a base CIGAM antes da entrada em produção</h2>
   <p>Fica salvo neste navegador — marque conforme for concluindo antes de rodar a promoção.</p>
 </div>
 <div class="card">

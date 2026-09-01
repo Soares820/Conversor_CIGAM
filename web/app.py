@@ -30,8 +30,7 @@ from werkzeug.utils import secure_filename
 
 from cigam_conversor import (
     CigamTemplate, Conversor, gerar_sql_promocao, gerar_sql_staging,
-    gerar_xlsx, gerar_xlsx_limpo, ler_planilha_cliente, limpar_registros,
-    listar_abas, sugerir_mapeamento,
+    gerar_xlsx, ler_planilha_cliente, listar_abas, sugerir_mapeamento,
 )
 
 RAIZ = Path(__file__).resolve().parent.parent
@@ -224,53 +223,6 @@ def download(nome_arquivo):
 @app.get("/limpeza")
 def limpeza():
     return render_template("limpeza.html")
-
-
-@app.post("/limpeza/processar")
-def limpeza_processar():
-    arquivo = request.files.get("arquivo")
-    if not arquivo or not arquivo.filename:
-        flash("Selecione uma planilha para limpar.", "erro")
-        return redirect(url_for("limpeza"))
-
-    pasta = _dir_sessao() / "limpeza"
-    pasta.mkdir(exist_ok=True)
-    nome_arquivo = secure_filename(arquivo.filename) or "planilha.xlsx"
-    caminho_entrada = pasta / nome_arquivo
-
-    try:
-        arquivo.save(caminho_entrada)
-        colunas, registros = ler_planilha_cliente(str(caminho_entrada))
-    except Exception as exc:
-        flash(f"Nao foi possivel ler a planilha: {exc}", "erro")
-        return redirect(url_for("limpeza"))
-
-    resultado = limpar_registros(
-        colunas, registros,
-        remover_duplicados=bool(request.form.get("remover_duplicados")),
-        normalizar_espacos=bool(request.form.get("normalizar_espacos")),
-        remover_colunas_vazias=bool(request.form.get("remover_colunas_vazias")),
-    )
-
-    nome_saida = f"limpo_{Path(nome_arquivo).stem}.xlsx"
-    gerar_xlsx_limpo(resultado.colunas, resultado.registros, str(pasta / nome_saida))
-
-    return render_template(
-        "limpeza.html",
-        resultado=resultado,
-        linhas_originais=len(registros),
-        colunas_originais=len(colunas),
-        arquivo_saida=nome_saida,
-    )
-
-
-@app.get("/limpeza/download/<path:nome_arquivo>")
-def limpeza_download(nome_arquivo):
-    sid = session.get("sid")
-    if not sid:
-        return redirect(url_for("limpeza"))
-    pasta = TMP_BASE / sid / "limpeza"
-    return send_from_directory(pasta, nome_arquivo, as_attachment=True)
 
 
 if __name__ == "__main__":
