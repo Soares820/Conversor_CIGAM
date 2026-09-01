@@ -46,7 +46,7 @@
           <span class="brand-sub">Planilha do cliente &rarr; layout de importação</span>
         </a>
         <nav class="topnav">
-          <a class="topnav-link {{ 'active' if request.endpoint in ('index', 'enviar', 'escolher_aba', 'definir_aba', 'mapear', 'converter', 'download') else '' }}" href="{{ url_for('index') }}">Converter</a>
+          <a class="topnav-link {{ 'active' if request.endpoint in ('index', 'enviar', 'definir_aba', 'converter') else '' }}" href="{{ url_for('index') }}">Converter</a>
           <a class="topnav-link {{ 'active' if request.endpoint and request.endpoint.startswith('limpeza') else '' }}" href="{{ url_for('limpeza') }}">Limpeza de base</a>
         </nav>
       </div>
@@ -59,22 +59,16 @@
 
   <main class="container{{ ' wide' if wide else '' }}">
     {% if passo_atual %}
-    {% set urls_passo = [url_for('index'), url_for('escolher_aba'), url_for('mapear')] %}
     <ol class="stepper">
       {% for label in ["Enviar arquivo", "Escolher tabela", "Mapear campos"] %}
         {% set n = loop.index %}
         {% set feito = concluido or n < passo_atual %}
         {% set ativo = (n == passo_atual and not concluido) %}
         <li class="step {{ 'done' if feito else '' }} {{ 'active' if ativo else '' }}">
-          {% if feito %}
-          <a class="step-link" href="{{ urls_passo[n-1] }}">
-            <span class="step-circle">{{ icon("check-circle") }}</span>
-            <span class="step-label">{{ label }}</span>
-          </a>
-          {% else %}
-          <span class="step-circle">{{ n }}</span>
+          <span class="step-circle">
+            {% if feito %}{{ icon("check-circle") }}{% else %}{{ n }}{% endif %}
+          </span>
           <span class="step-label">{{ label }}</span>
-          {% endif %}
         </li>
       {% endfor %}
     </ol>

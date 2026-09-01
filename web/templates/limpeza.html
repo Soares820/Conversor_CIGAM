@@ -4,50 +4,170 @@
 {% block conteudo %}
 <div class="page-head glass-panel">
   <h1>Limpeza de base</h1>
-  <p>Referência para a entrada em produção: o que o conversor já valida sozinho, o fluxo de carga recomendado e a ordem de dependência entre tabelas.</p>
+  <p>Roteiro para higienizar a base CIGAM antes da entrada em produção: desabilitar triggers, limpar as tabelas transacionais/de teste, reabilitar os triggers, conferir configurações e limpar as pastas de NFe.</p>
 </div>
 
 <div class="section-head glass-panel">
-  <h2>Validações que o conversor já faz</h2>
-  <p>Acontecem automaticamente na etapa de conversão — isso aqui é só para explicar o que cada aviso/erro significa.</p>
-</div>
-<div class="info-grid">
-  <div class="info-card">
-    <span class="info-card-icon">{{ icon("alert-triangle") }}</span>
-    <h3>Tamanho de campo</h3>
-    <p>Avisa (ou trunca, com a opção "Truncar") quando o valor excede o limite declarado na R2 do gabarito.</p>
-  </div>
-  <div class="info-card">
-    <span class="info-card-icon">{{ icon("alert-circle") }}</span>
-    <h3>PK duplicada</h3>
-    <p>Erro quando duas linhas repetem a chave (PK) escolhida na tela de mapeamento.</p>
-  </div>
-  <div class="info-card">
-    <span class="info-card-icon">{{ icon("alert-circle") }}</span>
-    <h3>Obrigatórios</h3>
-    <p>Erro quando um campo marcado como obrigatório fica vazio.</p>
-  </div>
-</div>
-
-<div class="section-head glass-panel">
-  <h2>Fluxo recomendado de carga no SQL Server</h2>
+  <h2>1. Desabilitar triggers</h2>
 </div>
 <div class="card">
-  <ol class="wiki-steps">
-    <li>Rode o <code>*_staging.sql</code> para popular a <code>stg_&lt;TABELA&gt;</code>.</li>
-    <li>Confira os dados na staging (contagens, amostragem).</li>
-    <li>Rode o <code>*_promocao.sql</code> para inserir na tabela CIGAM real (ele pula registros cuja PK já existe).</li>
-  </ol>
+  <pre class="code-block" data-copy-source id="cod-trig-off"><code>DISABLE trigger CGTR_EST_LIMITES_MOV ON ESMOVIME
+DISABLE trigger CGTR_EST_MOVIMENTO ON ESMOVIME
+DISABLE trigger CGTR_EST_LIMITES_GRADE on esgmovim</code></pre>
+  <button type="button" class="btn btn-ghost copy-btn" data-copy-target="cod-trig-off">{{ icon("copy") }} Copiar</button>
 </div>
 
 <div class="section-head glass-panel">
-  <h2>Ordem de carga (dependências)</h2>
-  <p>Cadastros-base antes dos que dependem deles.</p>
+  <h2>2. Limpar tabelas</h2>
+</div>
+<div class="card">
+  <pre class="code-block" data-copy-source id="cod-tabelas"><code>DELETE FROM GFLANCAM -- LANÇAMENTO FINANCEIRO
+DELETE FROM EXCONTRA -- CONHECIMENTO TRANSPORTE
+DELETE FROM CTCONTRA-- CONTRATO
+DELETE FROM FAPEDIDO -- PEDIDOS
+DELETE FROM FAITEMPE-- ITEM PEDIDOS
+DELETE FROM FANFISCA -- NOTAS FISCAIS SAIDA
+DELETE FROM FAGRADE -- GRADE DOS ITENS DOS PEDIDOS
+DELETE FROM FAOBSERN -- OBSERVAÇÃO NOTA FISCAL
+DELETE FROM FAIMPOST -- IMPOSTO NOTA FISCAL DE SAIDA
+DELETE FROM GFLOGCOM -- LOG DE COMISSÃO
+DELETE FROM GFCNF -- COMISSÃO NF
+DELETE FROM ESNFREFM -- NOTA RERENCIA
+DELETE FROM CECPEDID -- COMPLEMENTO PEDIDO
+DELETE FROM GECOMPED -- COMPLEMENTAR PEDIDO NF OC
+DELETE FROM FAGERNFE -- GERENCIAMENTO NFE
+DELETE FROM COORDEM -- ORDEM COMPRA
+DELETE FROM COIORDEM -- ITEM ORDEM DE COMPRA
+DELETE FROM COENTRAD -- NOTA FISCAL ENTRADA
+DELETE FROM COIMPOST -- IMPOSTO DE NOTA FISCAL ENTRADA
+DELETE FROM LFRESUMO -- RESUMO DE OPERAÇÃO
+DELETE FROM LFGRECOL -- GUIAS RECOLHIMENTO
+DELETE FROM LFGUGNRE -- GUIA GNRE
+DELETE FROM DIRETENC -- RETENCAO
+DELETE FROM FAOBSERP -- OBSERVACAO
+DELETE FROM ESMOVIME -- MOVIMENTO DE ESTOQUE
+DELETE FROM LFICMSER -- ICMS EFETIVO RESIDUAL
+DELETE FROM ESCOMMOV -- COMPLEMENTO MOVIMENTO
+DELETE FROM MEMOVIME -- MOVIMENTO ENDERECAMENTO
+DELETE FROM ESRGMOVT -- RATEIO GERENCIAL MOVIMENTO
+DELETE FROM ESMATXNS -- MATERIAL X NUMERO SERIE
+DELETE FROM ESMOIMPO -- MOVIMENTO X IMPOSTO
+DELETE FROM PCMOVXOD -- MOVIMENTO X ORDEM DESMONTAGEM
+DELETE FROM ESINCONS -- INCONSISTENCIA
+DELETE FROM PCTAOP -- TALAO
+DELETE FROM PCORPROD -- ORDEM PRODUCAO
+DELETE FROM PCMVTOOP -- MOVIMENTOS X OP
+DELETE FROM GELIBERA -- LIBERA CREDITO
+DELETE FROM FAIMOPED -- IMPOSTO PEDIDO
+DELETE FROM ESITEMINVENT -- ITEM INVENTARIO
+DELETE FROM ESINVENTARIO -- INVENTARIO
+DELETE FROM ESORDENS -- ORDENS
+DELETE FROM ESDEMAND -- DEMANDAS
+DELETE FROM COISOLIC -- ITEM DE SOLICITACAO
+DELETE FROM COSOLICI -- SOLICITACAO
+DELETE FROM ESESTOQU -- ESTOQUE
+DELETE FROM VECONTAT -- OPORTUNIDADE
+DELETE FROM COCOTACA -- COTACAO
+DELETE FROM GFCOMISS -- COMISSAO
+DELETE FROM ESMNSERI -- NUMERO DE SERIE
+DELETE FROM ESBALANC -- BALANÇO
+DELETE FROM ESGMOVIM -- MOVIMENTO DE LOTE
+DELETE FROM ESMOVDIG -- MOVIMENTO DIGITACAO
+DELETE FROM GACOMPLO -- COMPLEMENTO OC
+DELETE FROM COIMPOC -- IMPOSTO ORDEM COMPRA
+
+DELETE FROM COIMPSRV -- IMPORTACAO SERVICO
+DELETE FROM GMITEMOS -- ITEM OS
+DELETE FROM GMOSERVI -- ORDEM DE SERVICO
+DELETE FROM COPRENOT -- PRENOTA
+DELETE FROM COFINPNT -- FINANCEIRO PRENOTA
+DELETE FROM COIIPNOT -- IMPOSTO ITEM PRE NOTA
+DELETE FROM COCPRENO -- COMPLEMENTO PRE NOTA
+DELETE FROM PCMOPROD -- MOVIMENTO PRODUCAO
+DELETE FROM PPMENSOR -- MENSAGEM ORDEM
+DELETE FROM ESRINSBN -- RATEIO INSUMO BAIXA NULA
+
+DELETE FROM GESESSAO
+DELETE FROM GEPERGUN
+DELETE FROM GEEPE
+DELETE FROM CEITPRIM
+DELETE FROM CEPROIMP
+DELETE FROM CE2SPROC
+DELETE FROM GFLAUXIL
+DELETE FROM FACIMPED
+DELETE FROM FATITOPU
+DELETE FROM COITPNOT
+DELETE FROM ESRELAGL
+DELETE FROM GFENCCON
+DELETE FROM EXITEMRO
+DELETE FROM EXMANIFE
+DELETE FROM COGORDEM
+DELETE FROM COCMPENT
+DELETE FROM EXITEMET
+DELETE FROM FAVOLITE
+DELETE FROM CORGSOLI
+DELETE FROM CORGORDC
+DELETE FROM COFRETE
+DELETE FROM CEIMPDRA
+DELETE FROM CEEXPDRA
+DELETE FROM CENUMINV
+DELETE FROM GFRATEIO
+DELETE FROM GFRCNTB
+DELETE FROM GFRGEREN
+DELETE FROM GFCPE
+DELETE FROM GFCHEQUE
+DELETE FROM GFRGEREN
+DELETE FROM GFSESCAI
+DELETE FROM GFLAUXIL
+
+DELETE FROM GMATIVID
+DELETE FROM GMPECAOS
+DELETE FROM FACOMPLE
+DELETE FROM PCDEMOP
+DELETE FROM EXETIQUE
+DELETE FROM EXITEMET
+DELETE FROM CTCONBAN
+DELETE FROM ESRESFUT
+DELETE FROM COREIMPN
+DELETE FROM GFRATEIO
+DELETE FROM MECAXCD
+DELETE FROM MEDOCUME
+DELETE FROM MEITDXNS
+DELETE FROM MEITEDOC
+DELETE FROM ESNSERIE
+DELETE FROM GFHISOPB
+DELETE FROM FACARCOR</code></pre>
+  <button type="button" class="btn btn-ghost copy-btn" data-copy-target="cod-tabelas">{{ icon("copy") }} Copiar</button>
+</div>
+
+<div class="section-head glass-panel">
+  <h2>3. Reabilitar triggers</h2>
+</div>
+<div class="card">
+  <pre class="code-block" data-copy-source id="cod-trig-on"><code>ENABLE trigger CGTR_EST_LIMITES_MOV ON ESMOVIME
+ENABLE trigger CGTR_EST_MOVIMENTO ON ESMOVIME
+ENABLE trigger CGTR_EST_LIMITES_GRADE on esgmovim</code></pre>
+  <button type="button" class="btn btn-ghost copy-btn" data-copy-target="cod-trig-on">{{ icon("copy") }} Copiar</button>
+</div>
+
+<div class="section-head glass-panel">
+  <h2>4. Configurações</h2>
+  <p>Conferir estes códigos de configuração no CIGAM.</p>
 </div>
 <div class="card">
   <ul class="wiki-list">
-    <li><code>ESGRUPO</code>, <code>ESSUBGRU</code>, <code>ESCLASFI</code> <strong>antes de</strong> <code>ESMATERI</code></li>
-    <li><code>GEEMPRES</code> <strong>antes de</strong> <code>GFLANCAM</code> (contas a pagar/receber)</li>
+    <li><code>692</code> — Servidor de e-mail</li>
+    <li><code>1693</code> — Tipo de Ambiente da Nota Fiscal Eletrônica</li>
+    <li><code>2924</code> — Tipo de Ambiente do Conhecimento de Transporte Eletrônico</li>
+    <li><code>2980</code> — Tipo de Ambiente do Manifesto Eletrônico</li>
   </ul>
+</div>
+
+<div class="section-head glass-panel">
+  <h2>5. Limpeza das pastas</h2>
+  <p>Dentro da pasta <code>NFe</code>: <code>DANFE_impresso</code>, <code>Envio</code>, <code>Recebe</code> e <code>Retorno</code>.</p>
+</div>
+<div class="card">
+  <img class="wiki-image" src="{{ url_for('static', filename='img/limpeza-pastas-nfe.png') }}" alt="Explorador de arquivos mostrando o caminho Disco Local (C:) > Cigam > Biopol > CIGAM11 > NFe, com as pastas DANFE_impresso, Envio, Recebe e Retorno destacadas">
 </div>
 {% endblock %}

@@ -29,7 +29,7 @@
 
 <div class="download-grid">
   {% for arq in arquivos %}
-  <a class="download-card" href="{{ url_for('download', nome_arquivo=arq.nome) }}">
+  <a class="download-card" href="{{ arq.href }}" download="{{ arq.nome }}">
     <span class="download-card-icon {{ arq.tipo }}">{{ icon("file-excel") if arq.tipo == "xlsx" else icon("database") }}</span>
     <span>
       <span class="download-card-name">{{ arq.nome }}</span><br>

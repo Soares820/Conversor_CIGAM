@@ -13,6 +13,9 @@
   </div>
 
   <form method="post" action="{{ url_for('definir_aba') }}">
+    <textarea name="registros_json" hidden>{{ registros_json }}</textarea>
+    <textarea name="colunas_cliente_json" hidden>{{ colunas_cliente_json }}</textarea>
+    <textarea name="modelo_custom_b64" hidden>{{ modelo_custom_b64 }}</textarea>
     <ul class="table-grid" id="lista-abas">
       {% for item in abas %}
       <li>

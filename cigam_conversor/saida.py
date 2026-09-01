@@ -56,9 +56,19 @@ def _sql_valor(v: Any, nulls_reais: bool) -> str:
     return "'" + s.replace("'", "''") + "'"
 
 
+def _escrever(caminho, texto: str):
+    """caminho: path (str/Path) ou objeto com .write() (ex.: io.StringIO)."""
+    if hasattr(caminho, "write"):
+        caminho.write(texto)
+    else:
+        with open(caminho, "w", encoding="utf-8") as f:
+            f.write(texto)
+    return caminho
+
+
 def gerar_sql_staging(
     resultado: ResultadoConversao,
-    caminho: str,
+    caminho,
     *,
     schema: str = "dbo",
     prefixo_staging: str = "stg_",
@@ -85,15 +95,12 @@ def gerar_sql_staging(
         if lote and n % lote == 0:
             partes.append("GO")
 
-    texto = "\n".join(partes) + "\n"
-    with open(caminho, "w", encoding="utf-8") as f:
-        f.write(texto)
-    return caminho
+    return _escrever(caminho, "\n".join(partes) + "\n")
 
 
 def gerar_sql_promocao(
     resultado: ResultadoConversao,
-    caminho: str,
+    caminho,
     *,
     schema: str = "dbo",
     prefixo_staging: str = "stg_",
@@ -123,7 +130,4 @@ def gerar_sql_promocao(
     else:
         linhas[-1] += ";"
 
-    texto = "\n".join(linhas) + "\n"
-    with open(caminho, "w", encoding="utf-8") as f:
-        f.write(texto)
-    return caminho
+    return _escrever(caminho, "\n".join(linhas) + "\n")

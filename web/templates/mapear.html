@@ -9,6 +9,9 @@
 
 <div class="card">
   <form method="post" action="{{ url_for('converter') }}">
+    <input type="hidden" name="aba" value="{{ aba }}">
+    <textarea name="registros_json" hidden>{{ registros_json }}</textarea>
+    <textarea name="modelo_custom_b64" hidden>{{ modelo_custom_b64 }}</textarea>
     <div class="toolbar">
       <div class="search-box">
         {{ icon("search") }}

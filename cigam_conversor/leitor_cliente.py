@@ -16,12 +16,19 @@ import pandas as pd
 
 
 def ler_planilha_cliente(
-    caminho: str,
+    caminho,
     *,
     aba: str | int = 0,
     linha_cabecalho: int = 0,
 ) -> tuple[list[str], list[dict[str, Any]]]:
-    ext = Path(caminho).suffix.lower()
+    """
+    caminho: caminho de arquivo (str/Path) OU um objeto tipo-arquivo com
+    atributo `.filename` (ex.: werkzeug FileStorage de um upload) — usado
+    pela interface web para ler o upload direto da memoria, sem tocar em
+    disco.
+    """
+    nome = caminho.filename if hasattr(caminho, "filename") else str(caminho)
+    ext = Path(nome).suffix.lower()
     if ext in (".xlsx", ".xlsm", ".xls"):
         df = pd.read_excel(caminho, sheet_name=aba, header=linha_cabecalho,
                            dtype=object)

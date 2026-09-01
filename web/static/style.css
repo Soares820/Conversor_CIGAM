@@ -290,18 +290,6 @@ code {
 .step.active .step-label { color: var(--text); }
 .step.done .step-label { color: var(--text-muted); }
 
-.step-link {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  text-decoration: none;
-  color: inherit;
-  border-radius: 999px;
-}
-.step-link:hover .step-label { color: var(--accent); }
-.step-link:hover .step-circle { box-shadow: 0 0 0 4px var(--success-soft); }
-.step-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-
 @media (max-width: 560px) {
   .step-label { display: none; }
 }
@@ -858,6 +846,35 @@ table.ocorrencias th {
   font-size: 0.92rem;
 }
 .wiki-steps li, .wiki-list li { padding-left: 0.2rem; }
+.wiki-list code { background: var(--surface-2); padding: 0.1rem 0.35rem; border-radius: 4px; }
+
+.code-block {
+  margin: 0 0 1rem;
+  padding: 1rem 1.1rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+  max-height: 55vh;
+  overflow-y: auto;
+}
+.code-block code {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--text);
+  white-space: pre;
+}
+
+.copy-btn { font-size: 0.85rem; padding: 0.55rem 1rem; }
+.copy-btn.copied { color: var(--success); }
+
+.wiki-image {
+  display: block;
+  max-width: 100%;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
 
 /* ------------------------------------------------------------------ */
 /*  Fundo de particulas (pagina de limpeza de base)                    */

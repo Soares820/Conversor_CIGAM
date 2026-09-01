@@ -1,10 +1,18 @@
 """
 web/app.py
 ----------
-Interface web minimalista para o conversor CIGAM: envia a planilha do
-cliente, escolhe a tabela de destino, revisa o De-Para sugerido e baixa
-o XLSX + SQL gerados. E so uma camada fina sobre a biblioteca
-`cigam_conversor` — a mesma usada pelo cli.py — sem duplicar logica.
+Interface web do conversor CIGAM: envia a planilha do cliente, escolhe a
+tabela de destino, revisa o De-Para sugerido e baixa o XLSX + SQL
+gerados. Camada fina sobre a biblioteca `cigam_conversor` (a mesma do
+cli.py) — sem duplicar logica de conversao.
+
+Sem estado no servidor: nada e salvo em disco entre uma requisicao e
+outra (ambientes serverless como a Vercel nao garantem que o mesmo
+arquivo temporario sobreviva ate a proxima requisicao). Os dados da
+planilha do cliente e do modelo (se customizado) viajam de volta e para
+frente dentro dos proprios formularios HTML, como campos ocultos, e os
+arquivos finais (xlsx/sql) sao gerados em memoria e entregues como link
+de download (data: URI) na propria pagina de resultado.
 
 Rodar (a partir da raiz do projeto):
     python -m web.app
@@ -12,20 +20,19 @@ Depois abrir http://127.0.0.1:5000
 """
 from __future__ import annotations
 
+import base64
+import io
+import json
 import os
 import sys
 import uuid
-import shutil
-import tempfile
+from datetime import date, datetime
 from pathlib import Path
 
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from flask import (
-    Flask, flash, redirect, render_template, request,
-    send_from_directory, session, url_for,
-)
+from flask import Flask, flash, render_template, request
 from werkzeug.utils import secure_filename
 
 from cigam_conversor import (
@@ -35,7 +42,9 @@ from cigam_conversor import (
 
 RAIZ = Path(__file__).resolve().parent.parent
 MODELO_PADRAO = RAIZ / "modelo" / "modelo_cigam.xlsx"
-TMP_BASE = Path(tempfile.gettempdir()) / "cigam_web"
+
+app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY") or uuid.uuid4().hex
 
 
 def _tamanho_legivel(n: float) -> str:
@@ -45,38 +54,36 @@ def _tamanho_legivel(n: float) -> str:
         n /= 1024
     return f"{n:.1f} TB"
 
-app = Flask(__name__)
-# Em serverless (Vercel), cada cold start e um processo novo: uma chave
-# aleatoria invalidaria os cookies de sessao de quem estiver no meio do
-# fluxo. SECRET_KEY fixa via env var resolve isso; localmente cai para
-# uma chave aleatoria por execucao (nao precisa persistir entre reinicios).
-app.secret_key = os.environ.get("SECRET_KEY") or uuid.uuid4().hex
+
+# ---------------------------------------------------- serializacao ------ #
+def _serializar_registros(registros: list[dict]) -> str:
+    def default(o):
+        if isinstance(o, (datetime, date)):
+            return {"__date__": o.isoformat()}
+        if hasattr(o, "item"):  # escalar numpy
+            return o.item()
+        return str(o)
+    return json.dumps(registros, default=default)
 
 
-def _dir_sessao() -> Path:
-    sid = session.get("sid")
-    if not sid:
-        sid = uuid.uuid4().hex
-        session["sid"] = sid
-    d = TMP_BASE / sid
-    d.mkdir(parents=True, exist_ok=True)
-    return d
+def _desserializar_registros(texto: str) -> list[dict]:
+    def object_hook(d):
+        if set(d.keys()) == {"__date__"}:
+            return datetime.fromisoformat(d["__date__"])
+        return d
+    return json.loads(texto, object_hook=object_hook)
 
 
-def _limpar_sessao() -> None:
-    sid = session.get("sid")
-    if sid:
-        shutil.rmtree(TMP_BASE / sid, ignore_errors=True)
-    # so remove as chaves da aplicacao — preserva a fila de flash messages,
-    # senao um erro sinalizado logo antes do redirect para "/" nunca aparece.
-    for chave in ("sid", "cliente_path", "modelo_path", "aba"):
-        session.pop(chave, None)
+def _resolver_modelo(modelo_custom_b64: str | None):
+    """Devolve algo que CigamTemplate.de_arquivo/listar_abas aceitam."""
+    if modelo_custom_b64:
+        return io.BytesIO(base64.b64decode(modelo_custom_b64))
+    return str(MODELO_PADRAO)
 
 
 # --------------------------------------------------------- 1. upload ---- #
 @app.get("/")
 def index():
-    _limpar_sessao()
     return render_template("upload.html", passo_atual=1)
 
 
@@ -85,98 +92,85 @@ def enviar():
     cliente = request.files.get("cliente")
     if not cliente or not cliente.filename:
         flash("Selecione a planilha do cliente.", "erro")
-        return redirect(url_for("index"))
-
-    d = _dir_sessao()
-    nome_cliente = secure_filename(cliente.filename) or "cliente.xlsx"
-    caminho_cliente = d / nome_cliente
-    cliente.save(caminho_cliente)
-    session["cliente_path"] = str(caminho_cliente)
+        return render_template("upload.html", passo_atual=1)
 
     modelo = request.files.get("modelo")
-    if modelo and modelo.filename:
-        nome_modelo = secure_filename(modelo.filename) or "modelo.xlsx"
-        caminho_modelo = d / nome_modelo
-        modelo.save(caminho_modelo)
-        session["modelo_path"] = str(caminho_modelo)
-    else:
-        session["modelo_path"] = str(MODELO_PADRAO)
+    modelo_bytes = modelo.read() if (modelo and modelo.filename) else None
 
-    return redirect(url_for("escolher_aba"))
+    try:
+        colunas_cliente, registros = ler_planilha_cliente(cliente)
+        fonte_modelo = io.BytesIO(modelo_bytes) if modelo_bytes else str(MODELO_PADRAO)
+        abas = listar_abas(fonte_modelo)
+    except Exception as exc:
+        flash(f"Não foi possível ler a planilha ou o modelo: {exc}", "erro")
+        return render_template("upload.html", passo_atual=1)
+
+    return render_template(
+        "escolher_aba.html",
+        abas=abas,
+        registros_json=_serializar_registros(registros),
+        colunas_cliente_json=json.dumps(colunas_cliente),
+        modelo_custom_b64=base64.b64encode(modelo_bytes).decode("ascii") if modelo_bytes else "",
+        passo_atual=2,
+    )
 
 
 # ---------------------------------------------------- 2. escolher aba --- #
-@app.get("/aba")
-def escolher_aba():
-    modelo_path = session.get("modelo_path")
-    if not modelo_path:
-        return redirect(url_for("index"))
-    try:
-        abas = listar_abas(modelo_path)
-    except Exception as exc:
-        flash(f"Nao foi possivel ler o modelo: {exc}", "erro")
-        return redirect(url_for("index"))
-    return render_template("escolher_aba.html", abas=abas, passo_atual=2)
-
-
 @app.post("/aba")
 def definir_aba():
+    registros_json = request.form.get("registros_json", "")
+    colunas_cliente_json = request.form.get("colunas_cliente_json", "")
+    modelo_custom_b64 = request.form.get("modelo_custom_b64", "")
     aba = request.form.get("aba")
+
     if not aba:
         flash("Escolha uma tabela.", "erro")
-        return redirect(url_for("escolher_aba"))
-    session["aba"] = aba
-    return redirect(url_for("mapear"))
-
-
-# --------------------------------------------------------- 3. mapear ---- #
-@app.get("/mapear")
-def mapear():
-    modelo_path = session.get("modelo_path")
-    cliente_path = session.get("cliente_path")
-    aba = session.get("aba")
-    if not (modelo_path and cliente_path and aba):
-        return redirect(url_for("index"))
+        abas = listar_abas(_resolver_modelo(modelo_custom_b64))
+        return render_template(
+            "escolher_aba.html",
+            abas=abas,
+            registros_json=registros_json,
+            colunas_cliente_json=colunas_cliente_json,
+            modelo_custom_b64=modelo_custom_b64,
+            passo_atual=2,
+        )
 
     try:
-        t = CigamTemplate.de_arquivo(modelo_path, aba)
-        colunas_cliente, _ = ler_planilha_cliente(cliente_path)
+        t = CigamTemplate.de_arquivo(_resolver_modelo(modelo_custom_b64), aba)
+        colunas_cliente = json.loads(colunas_cliente_json)
     except Exception as exc:
-        flash(f"Erro ao ler os arquivos: {exc}", "erro")
-        return redirect(url_for("index"))
+        flash(f"Não foi possível abrir o modelo: {exc}", "erro")
+        return render_template("upload.html", passo_atual=1)
 
     sugestao = sugerir_mapeamento(colunas_cliente, t.colunas)
 
     return render_template(
         "mapear.html",
         tabela=t.tabela,
+        aba=aba,
         colunas_info=t.resumo_colunas(),
         colunas_cliente=colunas_cliente,
         sugestao=sugestao,
         nome_saida_padrao=t.tabela,
+        registros_json=registros_json,
+        modelo_custom_b64=modelo_custom_b64,
         passo_atual=3,
     )
 
 
+# --------------------------------------------------------- 3. mapear ---- #
 @app.post("/converter")
 def converter():
-    modelo_path = session.get("modelo_path")
-    cliente_path = session.get("cliente_path")
-    aba = session.get("aba")
-    if not (modelo_path and cliente_path and aba):
-        return redirect(url_for("index"))
+    aba = request.form.get("aba")
+    registros_json = request.form.get("registros_json", "")
+    modelo_custom_b64 = request.form.get("modelo_custom_b64", "")
 
     try:
-        t = CigamTemplate.de_arquivo(modelo_path, aba)
-        _, registros = ler_planilha_cliente(cliente_path)
-    except Exception:
-        flash(
-            "Não foi possível ler a planilha ou o modelo — provavelmente a "
-            "sessão expirou (isso pode acontecer se a etapa de mapeamento "
-            "ficar aberta por muito tempo). Envie a planilha novamente.",
-            "erro",
-        )
-        return redirect(url_for("index"))
+        t = CigamTemplate.de_arquivo(_resolver_modelo(modelo_custom_b64), aba)
+        registros = _desserializar_registros(registros_json)
+    except Exception as exc:
+        flash(f"Não foi possível processar a planilha: {exc}", "erro")
+        return render_template("upload.html", passo_atual=1)
 
     mapa = {}
     for col in t.colunas:
@@ -192,40 +186,51 @@ def converter():
         registros, mapa, truncar=truncar, pk=pk, obrigatorios=obrigatorios,
     )
 
-    saida_dir = _dir_sessao() / "saida"
-    saida_dir.mkdir(exist_ok=True)
     nome = secure_filename(request.form.get("saida_nome") or t.tabela) or t.tabela
-    base = saida_dir / nome
 
-    gerar_xlsx(res, str(base) + ".xlsx")
-    gerar_sql_staging(res, str(base) + "_staging.sql")
-    gerar_sql_promocao(res, str(base) + "_promocao.sql", pk=pk)
+    buf_xlsx = io.BytesIO()
+    gerar_xlsx(res, buf_xlsx)
 
-    arquivos = []
-    for nome_arq, tipo in (
-        (f"{nome}.xlsx", "xlsx"),
-        (f"{nome}_staging.sql", "sql"),
-        (f"{nome}_promocao.sql", "sql"),
-    ):
-        arquivos.append({
-            "nome": nome_arq,
-            "tipo": tipo,
-            "tamanho": _tamanho_legivel((saida_dir / nome_arq).stat().st_size),
-        })
+    buf_staging = io.StringIO()
+    gerar_sql_staging(res, buf_staging)
+
+    buf_promocao = io.StringIO()
+    gerar_sql_promocao(res, buf_promocao, pk=pk)
+
+    arquivos = [
+        {
+            "nome": f"{nome}.xlsx",
+            "tipo": "xlsx",
+            "tamanho": _tamanho_legivel(buf_xlsx.getbuffer().nbytes),
+            "href": (
+                "data:application/vnd.openxmlformats-officedocument"
+                ".spreadsheetml.sheet;base64,"
+                + base64.b64encode(buf_xlsx.getvalue()).decode("ascii")
+            ),
+        },
+        {
+            "nome": f"{nome}_staging.sql",
+            "tipo": "sql",
+            "tamanho": _tamanho_legivel(len(buf_staging.getvalue().encode("utf-8"))),
+            "href": (
+                "data:text/plain;charset=utf-8;base64,"
+                + base64.b64encode(buf_staging.getvalue().encode("utf-8")).decode("ascii")
+            ),
+        },
+        {
+            "nome": f"{nome}_promocao.sql",
+            "tipo": "sql",
+            "tamanho": _tamanho_legivel(len(buf_promocao.getvalue().encode("utf-8"))),
+            "href": (
+                "data:text/plain;charset=utf-8;base64,"
+                + base64.b64encode(buf_promocao.getvalue().encode("utf-8")).decode("ascii")
+            ),
+        },
+    ]
 
     return render_template(
         "resultado.html", res=res, arquivos=arquivos, passo_atual=3, concluido=True,
     )
-
-
-# -------------------------------------------------------- 4. download --- #
-@app.get("/download/<path:nome_arquivo>")
-def download(nome_arquivo):
-    sid = session.get("sid")
-    if not sid:
-        return redirect(url_for("index"))
-    saida_dir = TMP_BASE / sid / "saida"
-    return send_from_directory(saida_dir, nome_arquivo, as_attachment=True)
 
 
 # ------------------------------------------------------- limpeza de base -- #
