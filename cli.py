@@ -30,6 +30,7 @@ from cigam_conversor import (
     CigamTemplate,
     Conversor,
     construir_lookup_empresas,
+    construir_numerador_empresas,
     detectar_forcar_sinal,
     gerar_sql_promocao,
     gerar_sql_staging,
@@ -75,15 +76,20 @@ def cmd_converter(args):
     obrig = args.obrigatorios.split(",") if args.obrigatorios else None
 
     lookup = None
+    auto_numerar = None
     if args.referencia_empresas and "Cd_empresa" in t.colunas:
         _, registros_referencia = ler_planilha_cliente(args.referencia_empresas)
         lookup = {"Cd_empresa": construir_lookup_empresas(registros_referencia)}
+        if t.tabela == "GEEMPRES":
+            numerador = construir_numerador_empresas(registros_referencia, t)
+            if numerador:
+                auto_numerar = {"Cd_empresa": numerador}
 
     conv = Conversor(t)
     res = conv.converter(
         registros, mapa,
         truncar=args.truncar, pk=pk, obrigatorios=obrig,
-        forcar_sinal=detectar_forcar_sinal(t), lookup=lookup,
+        forcar_sinal=detectar_forcar_sinal(t), lookup=lookup, auto_numerar=auto_numerar,
     )
 
     base = Path(args.saida)

@@ -47,6 +47,49 @@ class ResultadoConversao:
         return not self.erros
 
 
+class NumeradorSequencial:
+    """Gera codigos sequenciais (zero-padded) pra registros novos que nao
+    tem Cd_empresa ainda — continua a partir do maior codigo ja existente
+    na planilha de referencia, pra nao colidir com quem ja esta cadastrado."""
+
+    def __init__(self, proximo: int, largura: int):
+        self._proximo = proximo
+        self._largura = largura
+
+    def gerar(self) -> str:
+        codigo = str(self._proximo).zfill(self._largura)
+        self._proximo += 1
+        return codigo
+
+
+def _eh_documento(regra: Any) -> bool:
+    r = str(regra or "").upper()
+    return "CNPJ" in r or "CPF" in r
+
+
+def construir_numerador_empresas(
+    registros_referencia: list[dict],
+    template: CigamTemplate,
+    *,
+    col_codigo: str = "Cd_empresa",
+) -> NumeradorSequencial | None:
+    """
+    A partir da mesma planilha de referencia usada no lookup, acha o
+    maior Cd_empresa ja em uso e devolve um numerador pra continuar dali
+    — usado ao gerar codigo novo pra cliente/fornecedor que ainda nao
+    existe no GEEMPRES (quem ja existe reaproveita o codigo via lookup).
+    """
+    if col_codigo not in template.colunas:
+        return None
+    maximo = 0
+    for reg in registros_referencia:
+        codigo = str(reg.get(col_codigo) or "").strip()
+        if codigo.isdigit():
+            maximo = max(maximo, int(codigo))
+    largura = template.tamanhos[template.indice(col_codigo)] or len(str(maximo)) or 6
+    return NumeradorSequencial(maximo + 1, largura)
+
+
 def detectar_forcar_sinal(template: CigamTemplate) -> dict[str, str] | None:
     """
     Em GFLANCAM, Valor/Vl_saldo tem que ser negativo em Contas a Pagar e
@@ -81,6 +124,7 @@ class Conversor:
         obrigatorios: list[str] | None = None,
         forcar_sinal: dict[str, str] | None = None,
         lookup: dict[str, dict[str, dict[str, str]]] | None = None,
+        auto_numerar: dict[str, NumeradorSequencial] | None = None,
     ) -> ResultadoConversao:
         """
         linhas_cliente : lista de dicts (uma por registro do cliente).
@@ -98,7 +142,15 @@ class Conversor:
         lookup         : {coluna: tabelas} onde tabelas e o dict devolvido
                          por construir_lookup_empresas — troca o valor
                          (nome, razao social, fantasia ou CNPJ/CPF) pelo
-                         Cd_empresa correspondente. Gera erro se nao achar.
+                         Cd_empresa correspondente.
+        auto_numerar   : {coluna: NumeradorSequencial} — quando o lookup
+                         nao acha correspondencia (ou o campo nem veio
+                         mapeado), gera um codigo novo em vez de erro.
+                         Existe pra importar cliente/fornecedor novo no
+                         proprio GEEMPRES: quem ja existe reaproveita o
+                         codigo (lookup), quem nao existe ganha um codigo
+                         sequencial novo (auto_numerar). Sem isso, uma
+                         correspondencia nao encontrada vira erro.
         """
         self._validar_mapeamento(mapeamento)
 
@@ -108,7 +160,9 @@ class Conversor:
         obrig = set(obrigatorios or [])
 
         for i, reg in enumerate(linhas_cliente, start=1):
-            linha = self._montar_linha(reg, mapeamento, i, obrig, truncar, oc, forcar_sinal, lookup)
+            linha = self._montar_linha(
+                reg, mapeamento, i, obrig, truncar, oc, forcar_sinal, lookup, auto_numerar,
+            )
             linhas.append(linha)
 
             if pk:
@@ -145,14 +199,28 @@ class Conversor:
         oc: list[Ocorrencia],
         forcar_sinal: dict[str, str] | None = None,
         lookup: dict[str, dict] | None = None,
+        auto_numerar: dict[str, NumeradorSequencial] | None = None,
     ) -> list[Any]:
         linha: list[Any] = []
         for idx, col in enumerate(self.t.colunas):
             origem = mapeamento.get(col)
             valor = reg.get(origem) if origem else None
 
+            if valor not in (None, "") and _eh_documento(self.t.regras[idx]):
+                valor = _normalizar_documento(valor) or valor
+
             if lookup and col in lookup and valor not in (None, ""):
-                valor = self._resolver_lookup(valor, col, lookup[col], i, oc)
+                valor = self._resolver_lookup(
+                    valor, col, lookup[col], i, oc,
+                    numerador=(auto_numerar or {}).get(col),
+                )
+
+            if valor in (None, "") and auto_numerar and col in auto_numerar:
+                valor = auto_numerar[col].gerar()
+                oc.append(Ocorrencia(
+                    "aviso", i, col,
+                    f"código {valor} atribuído automaticamente (novo registro)",
+                ))
 
             if valor in (None, ""):
                 if col in obrig:
@@ -171,6 +239,7 @@ class Conversor:
 
     def _resolver_lookup(
         self, valor: Any, col: str, tabelas: dict, i: int, oc: list[Ocorrencia],
+        numerador: NumeradorSequencial | None = None,
     ) -> Any:
         bruto = str(valor).strip()
 
@@ -181,6 +250,14 @@ class Conversor:
         nome = _normalizar_texto(bruto)
         if nome in tabelas.get("nome", {}):
             return tabelas["nome"][nome]
+
+        if numerador is not None:
+            codigo = numerador.gerar()
+            oc.append(Ocorrencia(
+                "aviso", i, col,
+                f"'{valor}' não encontrado na referência — novo registro, código {codigo} atribuído automaticamente",
+            ))
+            return codigo
 
         oc.append(Ocorrencia(
             "erro", i, col,

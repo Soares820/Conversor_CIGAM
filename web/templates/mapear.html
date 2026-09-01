@@ -11,7 +11,11 @@
 <div class="card">
   <div class="section-head" style="margin-top:0;">
     <h2>Planilha de referência — Empresas (GEEMPRES)</h2>
+    {% if tabela == "GEEMPRES" %}
+    <p>Envie aqui um <code>SELECT * FROM GEEMPRES</code> (com cabeçalho) pra evitar duplicar quem já está cadastrado: mapeie <code>Cd_empresa</code> pra coluna do cliente com nome/razão social/fantasia/CNPJ — quem já existe reaproveita o código, quem não existe ganha um código novo automaticamente (continua do maior já usado). Sem essa planilha, todo registro sem <code>Cd_empresa</code> mapeado vai dar erro de campo obrigatório.</p>
+    {% else %}
     <p>Essa tabela usa <code>Cd_empresa</code>. Se a coluna do cliente trouxer nome, razão social, fantasia ou CNPJ/CPF em vez do código, envie aqui um <code>SELECT * FROM GEEMPRES</code> (com cabeçalho) pra gente resolver automaticamente. Sem isso, o valor do cliente é usado direto.</p>
+    {% endif %}
   </div>
   <div class="dropzone" data-dropzone>
     <input type="file" id="referencia_empresas" name="referencia_empresas" form="form-mapear" accept=".xlsx,.xls,.csv,.tsv">
