@@ -62,26 +62,85 @@ def _normalizar_documento(s: Any) -> str:
     return re.sub(r"\D", "", str(s))
 
 
+# Vocabulario de negocio comum -> nome real da coluna CIGAM. Existe pra
+# reconhecer nomes que um relatorio financeiro tipicamente usa (ex.:
+# "Fornecedor", "Vencimento") mas que nao tem nenhuma letra em comum com
+# o nome interno do campo no CIGAM (ex.: Cd_empresa), entao o match por
+# substring sozinho nunca ia pegar.
+_SINONIMOS_CIGAM: dict[str, tuple[str, ...]] = {
+    "Cd_empresa": (
+        "fornecedor", "nomefornecedor", "razaosocial", "razaosocialfornecedor",
+        "cliente", "nomecliente", "credor", "beneficiario", "pagador", "sacado",
+    ),
+    "Nf": ("notafiscal", "numeronf", "nrnf", "nnf", "numeronotafiscal"),
+    "Fatura": ("parcela", "numeroparcela", "nrparcela", "nparcela"),
+    "Dt_vencimento": ("vencimento", "datavencimento", "dtvencimento", "venc"),
+    "Dt_emissao": ("emissao", "dataemissao", "dtemissao"),
+    "Data": ("data", "dataemissao", "emissao"),
+    "Valor": ("valortotal", "valortitulo", "vlrtitulo", "vlr", "valorpagar", "valorreceber"),
+    "Historico": ("descricao", "observacao", "obs"),
+    "Cnpj_cpf": ("cnpj", "cpf", "cnpjcpf", "documento"),
+    "Cd_material": ("codigo", "codigoproduto", "codproduto", "codmaterial"),
+    "Descricao": ("produto", "nomeproduto", "descricaoproduto"),
+}
+
+
 def sugerir_mapeamento(
     colunas_cliente: list[str],
     colunas_cigam: list[str],
 ) -> dict[str, str]:
     """
-    Sugestao automatica simples de De-Para por similaridade de nome
-    (normalizando acentos, espacos e underscores). O usuario revisa/ajusta
+    Sugestao automatica de De-Para em 3 passadas, cada uma cobrindo
+    todas as colunas antes de passar pra proxima (senao um campo mais
+    "faminto" no comeco da lista podia roubar por substring a coluna que
+    um campo depois ia querer por match exato — ex.: sem isso,
+    "Cd_historico" pegava "Historico" antes do proprio campo
+    "Historico" conseguir seu match exato):
+      1. match exato por nome normalizado
+      2. sinonimos de negocio conhecidos (_SINONIMOS_CIGAM)
+      3. substring, ultimo recurso
+    Cada coluna do cliente so e usada uma vez. O usuario revisa/ajusta
     na tela. Retorna {coluna_cigam: coluna_cliente}.
     """
     idx_cli = {_normalizar_texto(c): c for c in colunas_cliente}
+    usados: set[str] = set()
     mapa: dict[str, str] = {}
-    for cig in colunas_cigam:
+
+    pendentes = list(colunas_cigam)
+
+    proxima_passada = []
+    for cig in pendentes:
         n = _normalizar_texto(cig)
-        if n in idx_cli:
+        if n in idx_cli and n not in usados:
             mapa[cig] = idx_cli[n]
+            usados.add(n)
         else:
-            for ncli, cli in idx_cli.items():
-                if n and (n in ncli or ncli in n):
-                    mapa[cig] = cli
-                    break
+            proxima_passada.append(cig)
+    pendentes = proxima_passada
+
+    proxima_passada = []
+    for cig in pendentes:
+        for sinonimo in _SINONIMOS_CIGAM.get(cig, ()):
+            if sinonimo in idx_cli and sinonimo not in usados:
+                mapa[cig] = idx_cli[sinonimo]
+                usados.add(sinonimo)
+                break
+        else:
+            proxima_passada.append(cig)
+    pendentes = proxima_passada
+
+    for cig in pendentes:
+        n = _normalizar_texto(cig)
+        if not n:
+            continue
+        for ncli, cli in idx_cli.items():
+            if ncli in usados:
+                continue
+            if n in ncli or ncli in n:
+                mapa[cig] = cli
+                usados.add(ncli)
+                break
+
     return mapa
 
 
