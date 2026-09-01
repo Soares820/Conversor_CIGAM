@@ -192,22 +192,20 @@ code {
   color: var(--text);
 }
 
-.brand-mark {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, var(--accent), #a08bff);
-  display: flex;
+.logo-chip {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 0.3rem 0.55rem;
   box-shadow: var(--shadow-sm);
   flex-shrink: 0;
 }
-.brand-mark svg { width: 20px; height: 20px; }
+.logo-img { display: block; height: 20px; width: auto; }
+.logo-cigam { height: 24px; }
 
-.brand-text { display: flex; flex-direction: column; line-height: 1.15; }
-.brand-title { font-weight: 700; font-size: 1.02rem; }
+.brand-sep { color: var(--text-faint); font-weight: 300; }
 .brand-sub { font-size: 0.75rem; color: var(--text-muted); }
 
 .theme-toggle {

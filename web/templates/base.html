@@ -35,11 +35,14 @@
     <div class="topbar">
       <div class="topbar-left">
         <a class="brand" href="{{ url_for('index') }}">
-          <span class="brand-mark">{{ icon("wand") }}</span>
-          <span class="brand-text">
-            <span class="brand-title">Conversor CIGAM</span>
-            <span class="brand-sub">Planilha do cliente &rarr; layout de importação</span>
+          <span class="logo-chip">
+            <img class="logo-img logo-falavinha" src="{{ url_for('static', filename='img/falavinha-next.webp') }}" alt="Falavinha Next">
           </span>
+          <span class="brand-sep">&times;</span>
+          <span class="logo-chip">
+            <img class="logo-img logo-cigam" src="{{ url_for('static', filename='img/cigam-by-senior.png') }}" alt="CIGAM by Senior">
+          </span>
+          <span class="brand-sub">Planilha do cliente &rarr; layout de importação</span>
         </a>
         <nav class="topnav">
           <a class="topnav-link {{ 'active' if request.endpoint in ('index', 'enviar', 'escolher_aba', 'definir_aba', 'mapear', 'converter', 'download') else '' }}" href="{{ url_for('index') }}">Converter</a>
