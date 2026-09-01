@@ -47,6 +47,11 @@ MODELO_PADRAO = RAIZ / "modelo" / "modelo_cigam.xlsx"
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY") or uuid.uuid4().hex
+# Werkzeug limita cada campo de formulario (nao-arquivo) a 500 KB por
+# padrao (protecao contra DoS) — pequeno demais pro campo oculto que
+# carrega a planilha entre as etapas. Sobe pra caber LIMITE_PAYLOAD_BYTES
+# com folga.
+app.config["MAX_FORM_MEMORY_SIZE"] = 8 * 1024 * 1024
 
 
 def _tamanho_legivel(n: float) -> str:
